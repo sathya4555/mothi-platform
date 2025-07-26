@@ -1,0 +1,35 @@
+### Test Health Endpoint
+GET http://localhost:3000/health
+
+### Test Login (will fail without users)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@mothi.com",
+  "password": "password123"
+}
+
+### Test Create User (Admin only - will need auth token)
+POST http://localhost:3000/auth/create-user
+Content-Type: application/json
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+{
+  "name": "Test Agent",
+  "email": "agent@mothi.com",
+  "phone": "1234567890",
+  "role": "agent"
+}
+
+### Test Refresh Token
+POST http://localhost:3000/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+}
+
+### Test Logout (requires auth token)
+POST http://localhost:3000/auth/logout
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE 
