@@ -1,16 +1,24 @@
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
 } from "react-native";
+import {
+  Box,
+  Text,
+  VStack,
+  HStack,
+  Input,
+  Button,
+  FormControl,
+  Icon,
+  useColorModeValue,
+  Spinner,
+  Divider,
+} from "native-base";
+import { Ionicons } from "@expo/vector-icons";
 import { authService, LoginCredentials, User } from "../services/auth.service";
 
 interface LoginScreenProps {
@@ -24,6 +32,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<LoginCredentials>>({});
+
+  // Simple color values for clean theme support with explicit dark mode colors
+  const bgColor = useColorModeValue("#ffffff", "#171717");
+  const cardBg = useColorModeValue("#ffffff", "#262626");
+  const textColor = useColorModeValue("#171717", "#fafafa");
+  const textSecondary = useColorModeValue("#64748b", "#94a3b8");
+  const borderColor = useColorModeValue("#e2e8f0", "#475569");
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginCredentials> = {};
@@ -90,265 +105,275 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Box flex={1} bg={bgColor} px={6} pt={20} pb={12}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Mothi Platform</Text>
-            <Text style={styles.subtitle}>Sales Management System</Text>
-          </View>
+          <VStack alignItems="center" mb={16}>
+            <Box bg="primary.500" p={4} borderRadius="full" mb={6} shadow={4}>
+              <Icon as={Ionicons} name="business" size="3xl" color="white" />
+            </Box>
+            <Text
+              fontSize="4xl"
+              fontWeight="800"
+              color={textColor}
+              mb={3}
+              textAlign="center"
+            >
+              Mothi Platform
+            </Text>
+            <Text
+              fontSize="lg"
+              color={textSecondary}
+              textAlign="center"
+              fontWeight="500"
+            >
+              Sales Management System
+            </Text>
+          </VStack>
 
           {/* Login Form */}
-          <View style={styles.form}>
-            <Text style={styles.formTitle}>Sign In</Text>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Enter your email"
-                value={credentials.email}
-                onChangeText={(text) => {
-                  setCredentials({ ...credentials, email: text });
-                  if (errors.email) setErrors({ ...errors, email: undefined });
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
+          <Box
+            bg={cardBg}
+            borderRadius="2xl"
+            p={8}
+            mb={8}
+            borderWidth={1}
+            borderColor={borderColor}
+            shadow={4}
+          >
+            <VStack alignItems="center" mb={8}>
+              <Icon
+                as={Ionicons}
+                name="lock-closed"
+                size="xl"
+                color="primary.500"
+                mb={3}
               />
-              {errors.email && (
-                <Text style={styles.errorText}>{errors.email}</Text>
-              )}
-            </View>
+              <Text
+                fontSize="2xl"
+                fontWeight="700"
+                color={textColor}
+                textAlign="center"
+              >
+                Welcome Back
+              </Text>
+              <Text fontSize="sm" color={textSecondary} textAlign="center">
+                Sign in to your account
+              </Text>
+            </VStack>
 
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[styles.input, errors.password && styles.inputError]}
-                placeholder="Enter your password"
-                value={credentials.password}
-                onChangeText={(text) => {
-                  setCredentials({ ...credentials, password: text });
-                  if (errors.password)
-                    setErrors({ ...errors, password: undefined });
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              )}
-            </View>
+            <VStack space={6}>
+              {/* Email Input */}
+              <FormControl isInvalid={!!errors.email}>
+                <FormControl.Label>
+                  <Text color={textColor} fontWeight="600" fontSize="md">
+                    Email Address
+                  </Text>
+                </FormControl.Label>
+                <Input
+                  placeholder="Enter your email"
+                  value={credentials.email}
+                  onChangeText={(text) => {
+                    setCredentials({ ...credentials, email: text });
+                    if (errors.email)
+                      setErrors({ ...errors, email: undefined });
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  size="lg"
+                  borderRadius="xl"
+                  borderColor={errors.email ? "secondary.500" : borderColor}
+                  _focus={{
+                    borderColor: "primary.500",
+                    bg: "background.50",
+                    shadow: 2,
+                  }}
+                  InputLeftElement={
+                    <Icon
+                      as={Ionicons}
+                      name="mail"
+                      size="sm"
+                      color="secondary.400"
+                      ml={3}
+                    />
+                  }
+                />
+                <FormControl.ErrorMessage>
+                  {errors.email}
+                </FormControl.ErrorMessage>
+              </FormControl>
 
-            {/* Login Button */}
-            <TouchableOpacity
-              style={[
-                styles.loginButton,
-                isLoading && styles.loginButtonDisabled,
-              ]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              {/* Password Input */}
+              <FormControl isInvalid={!!errors.password}>
+                <FormControl.Label>
+                  <Text color={textColor} fontWeight="600" fontSize="md">
+                    Password
+                  </Text>
+                </FormControl.Label>
+                <Input
+                  placeholder="Enter your password"
+                  value={credentials.password}
+                  onChangeText={(text) => {
+                    setCredentials({ ...credentials, password: text });
+                    if (errors.password)
+                      setErrors({ ...errors, password: undefined });
+                  }}
+                  type="password"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  size="lg"
+                  borderRadius="xl"
+                  borderColor={errors.password ? "secondary.500" : borderColor}
+                  _focus={{
+                    borderColor: "primary.500",
+                    bg: "background.50",
+                    shadow: 2,
+                  }}
+                  InputLeftElement={
+                    <Icon
+                      as={Ionicons}
+                      name="lock-closed"
+                      size="sm"
+                      color="secondary.400"
+                      ml={3}
+                    />
+                  }
+                />
+                <FormControl.ErrorMessage>
+                  {errors.password}
+                </FormControl.ErrorMessage>
+              </FormControl>
+
+              {/* Login Button */}
+              <Button
+                size="lg"
+                onPress={handleLogin}
+                isLoading={isLoading}
+                isLoadingText="Signing In..."
+                colorScheme="primary"
+                borderRadius="xl"
+                py={4}
+                mt={4}
+                _pressed={{ opacity: 0.8 }}
+                shadow={3}
+              >
+                <HStack space={2} alignItems="center">
+                  <Icon as={Ionicons} name="log-in" size="sm" color="white" />
+                  <Text fontSize="md" fontWeight="600">
+                    Sign In
+                  </Text>
+                </HStack>
+              </Button>
+            </VStack>
+          </Box>
 
           {/* Quick Login Buttons */}
-          <View style={styles.quickLoginContainer}>
-            <Text style={styles.quickLoginTitle}>
-              Quick Login (Development)
-            </Text>
-            <View style={styles.quickLoginButtons}>
-              <TouchableOpacity
-                style={[styles.quickButton, styles.adminButton]}
+          <Box
+            bg={cardBg}
+            borderRadius="2xl"
+            p={6}
+            mb={8}
+            borderWidth={1}
+            borderColor={borderColor}
+            shadow={3}
+          >
+            <VStack alignItems="center" mb={6}>
+              <Icon
+                as={Ionicons}
+                name="flash"
+                size="lg"
+                color="secondary.500"
+                mb={2}
+              />
+              <Text
+                fontSize="lg"
+                fontWeight="600"
+                color={textColor}
+                textAlign="center"
+              >
+                Quick Login (Development)
+              </Text>
+              <Text fontSize="sm" color={textSecondary} textAlign="center">
+                For testing purposes only
+              </Text>
+            </VStack>
+
+            <VStack space={3}>
+              <Button
                 onPress={() => handleQuickLogin("admin")}
+                colorScheme="primary"
+                variant="solid"
+                borderRadius="xl"
+                py={3}
+                _pressed={{ opacity: 0.8 }}
               >
-                <Text style={styles.quickButtonText}>Admin</Text>
-              </TouchableOpacity>
+                <HStack space={2} alignItems="center" justifyContent="center">
+                  <Icon as={Ionicons} name="shield" size="sm" color="white" />
+                  <Text fontWeight="600">Administrator</Text>
+                </HStack>
+              </Button>
 
-              <TouchableOpacity
-                style={[styles.quickButton, styles.agentButton]}
+              <Button
                 onPress={() => handleQuickLogin("agent")}
+                colorScheme="secondary"
+                variant="solid"
+                borderRadius="xl"
+                py={3}
+                _pressed={{ opacity: 0.8 }}
               >
-                <Text style={styles.quickButtonText}>Agent</Text>
-              </TouchableOpacity>
+                <HStack space={2} alignItems="center" justifyContent="center">
+                  <Icon as={Ionicons} name="person" size="sm" color="white" />
+                  <Text fontWeight="600">Sales Agent</Text>
+                </HStack>
+              </Button>
 
-              <TouchableOpacity
-                style={[styles.quickButton, styles.coordinatorButton]}
+              <Button
                 onPress={() => handleQuickLogin("coordinator")}
+                colorScheme="primary"
+                variant="outline"
+                borderRadius="xl"
+                py={3}
+                _pressed={{ opacity: 0.8 }}
               >
-                <Text style={styles.quickButtonText}>Coordinator</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                <HStack space={2} alignItems="center" justifyContent="center">
+                  <Icon
+                    as={Ionicons}
+                    name="people"
+                    size="sm"
+                    color="primary.500"
+                  />
+                  <Text fontWeight="600" color="primary.500">
+                    Coordinator
+                  </Text>
+                </HStack>
+              </Button>
+            </VStack>
+          </Box>
 
           {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
+          <VStack alignItems="center" mt="auto">
+            <Divider bg={borderColor} mb={4} />
+            <Text
+              fontSize="xs"
+              color={textSecondary}
+              textAlign="center"
+              fontWeight="500"
+            >
               © 2024 Mothi Platform. All rights reserved.
             </Text>
-          </View>
-        </View>
+            <Text fontSize="xs" color={textSecondary} textAlign="center">
+              Built with ❤️ for modern businesses
+            </Text>
+          </VStack>
+        </Box>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  scrollContainer: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#1e293b",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#64748b",
-    textAlign: "center",
-  },
-  form: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#374151",
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: "#ffffff",
-  },
-  inputError: {
-    borderColor: "#ef4444",
-  },
-  errorText: {
-    color: "#ef4444",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  loginButton: {
-    backgroundColor: "#3b82f6",
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  loginButtonDisabled: {
-    backgroundColor: "#9ca3af",
-  },
-  loginButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  quickLoginContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  quickLoginTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  quickLoginButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  quickButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginHorizontal: 4,
-    alignItems: "center",
-  },
-  adminButton: {
-    backgroundColor: "#dc2626",
-  },
-  agentButton: {
-    backgroundColor: "#059669",
-  },
-  coordinatorButton: {
-    backgroundColor: "#7c3aed",
-  },
-  quickButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  footer: {
-    alignItems: "center",
-    marginTop: "auto",
-  },
-  footerText: {
-    fontSize: 12,
-    color: "#9ca3af",
-    textAlign: "center",
-  },
-});

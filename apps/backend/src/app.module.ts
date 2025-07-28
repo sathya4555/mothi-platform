@@ -14,6 +14,9 @@ import {
 } from './entities';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { PartiesModule } from './parties/parties.module';
+import { ProductsModule } from './products/products.module';
+import { PurchasesModule } from './purchases/purchases.module';
 
 @Module({
   imports: [
@@ -41,6 +44,9 @@ import { UsersModule } from './users/users.module';
     }),
     AuthModule,
     UsersModule,
+    PartiesModule,
+    ProductsModule,
+    PurchasesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
