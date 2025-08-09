@@ -29,8 +29,8 @@ export class User {
   @Column({ type: 'varchar', length: 20 })
   phone: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  password: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  password: string | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   refreshToken: string;

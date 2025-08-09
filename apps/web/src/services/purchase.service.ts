@@ -20,6 +20,13 @@ export interface PurchaseListItem {
   party?: { name: string };
 }
 
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface DashboardStats {
   summary: {
     totalPurchases: number;
@@ -72,7 +79,7 @@ export interface CreatePurchaseInput {
 export const purchaseService = {
   async list(params?: Record<string, any>) {
     const { data } = await api.get("/purchases", { params });
-    return data as PurchaseListItem[];
+    return data as Paginated<PurchaseListItem>;
   },
 
   async getById(id: number) {

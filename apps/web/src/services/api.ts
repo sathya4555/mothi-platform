@@ -24,12 +24,32 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    const original = error.config || {};
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        try {
+          const r = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
+          const { accessToken, refreshToken: newRefreshToken } = r.data || {};
+          if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+          if (newRefreshToken)
+            localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+          original.headers = original.headers ?? {};
+          original.headers.Authorization = `Bearer ${accessToken}`;
+          return api(original);
+        } catch (_) {
+          // fall through to logout/redirect below
+        }
+      }
+    }
     if (error.response?.status === 401) {
       try {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.removeItem(REFRESH_TOKEN_KEY);
       } catch {}
-      // Force redirect to login so user sees session expired
       if (typeof window !== "undefined") {
         const current = window.location.pathname + window.location.search;
         const loginUrl = `/login?next=${encodeURIComponent(current)}`;

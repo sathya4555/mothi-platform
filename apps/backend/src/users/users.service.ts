@@ -15,6 +15,14 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
+  async findByEmailInsensitive(email: string): Promise<User | undefined> {
+    const e = (email || '').trim().toLowerCase();
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: e })
+      .getOne();
+  }
+
   async findById(id: number): Promise<User | undefined> {
     return this.usersRepository.findOne({ where: { id } });
   }
@@ -23,12 +31,12 @@ export class UsersService {
     name: string;
     email: string;
     phone: string;
-    password: string;
+    password: string | null;
     role: string;
   }): Promise<User> {
     const user = this.usersRepository.create({
       name: userData.name,
-      email: userData.email,
+      email: (userData.email || '').trim().toLowerCase(),
       phone: userData.phone,
       password: userData.password,
       role: userData.role as UserRole,
@@ -36,6 +44,22 @@ export class UsersService {
     });
 
     return this.usersRepository.save(user);
+  }
+
+  async updateUser(
+    id: number,
+    updates: Partial<Pick<User, 'role' | 'isActive' | 'name' | 'phone'>>,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) throw new Error('User not found');
+    Object.assign(user, updates);
+    return this.usersRepository.save(user);
+  }
+
+  async removeUser(id: number): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) return;
+    await this.usersRepository.remove(user);
   }
 
   async saveRefreshToken(userId: number, refreshToken: string): Promise<void> {
@@ -60,9 +84,9 @@ export class UsersService {
     }
     const users = await this.usersRepository.find({
       where,
-      select: ['id', 'name', 'role'],
+      select: ['id', 'name', 'email', 'role', 'isActive'],
       order: { name: 'ASC' },
-      take: 50,
+      take: 100,
     });
     return users;
   }

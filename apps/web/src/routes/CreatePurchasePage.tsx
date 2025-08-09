@@ -66,6 +66,7 @@ const CreatePurchasePage: React.FC = () => {
     {}
   );
   const [subOpenIdx, setSubOpenIdx] = useState<number | null>(null);
+  const [moreOpen, setMoreOpen] = useState<Record<number, boolean>>({});
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -108,6 +109,16 @@ const CreatePurchasePage: React.FC = () => {
   };
   const removeItem = (idx: number) => {
     setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
+  };
+  const duplicateItem = (idx: number) => {
+    setForm((f) => ({
+      ...f,
+      items: [
+        ...f.items.slice(0, idx + 1),
+        { ...f.items[idx] },
+        ...f.items.slice(idx + 1),
+      ],
+    }));
   };
 
   const filteredSubcategories = (productId: number) => {
@@ -179,13 +190,38 @@ const CreatePurchasePage: React.FC = () => {
                 <label className="sr-only">Party</label>
                 <div className="relative">
                   <input
-                    className="peer h-11 w-full rounded-xl border border-border bg-background px-3.5 text-[15px] outline-none focus:ring-2 ring-ring transition"
-                    placeholder="Search or select a party"
+                    className="peer h-11 w-full rounded-xl border border-border bg-background px-3.5 pr-9 text-[15px] outline-none focus:ring-2 ring-ring transition placeholder-transparent"
+                    placeholder=" "
                     value={partyQuery}
                     onChange={(e) => setPartyQuery(e.target.value)}
                     onFocus={() => setPartyOpen(true)}
                     onBlur={() => setTimeout(() => setPartyOpen(false), 150)}
                   />
+                  <span className="pointer-events-none absolute left-3.5 -top-2 bg-background px-1 rounded text-xs text-muted-foreground">
+                    Search or select a party
+                  </span>
+                  {(partyQuery || form.partyId) && (
+                    <button
+                      type="button"
+                      aria-label="Clear party"
+                      onClick={() => {
+                        setPartyQuery("");
+                        setForm({ ...form, partyId: 0 });
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="h-4 w-4"
+                      >
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
                 {partyOpen && (
                   <div className="absolute z-50 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-border bg-background shadow-sm">
@@ -221,10 +257,10 @@ const CreatePurchasePage: React.FC = () => {
                   </div>
                 ) : null}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sales Type</label>
+              <div className="relative">
+                <label className="sr-only">Sales Type</label>
                 <select
-                  className={selectBase}
+                  className="peer h-11 w-full rounded-xl border border-border bg-background px-3.5 text-[15px] outline-none focus:ring-2 ring-ring transition"
                   value={form.salesType}
                   onChange={(e) =>
                     setForm({
@@ -241,6 +277,9 @@ const CreatePurchasePage: React.FC = () => {
                   <option value="big">Big</option>
                   <option value="king">King</option>
                 </select>
+                <span className="pointer-events-none absolute left-3.5 -top-2 bg-background px-1 rounded text-xs text-muted-foreground">
+                  Sales Type
+                </span>
               </div>
               {/* Unique ID is auto-generated and not shown to the user */}
               <div className="space-y-2">
@@ -299,7 +338,7 @@ const CreatePurchasePage: React.FC = () => {
 
           {/* Card: Items */}
           <div className="rounded-2xl border border-border bg-card/60 p-5 sm:p-7 shadow-md shadow-black/5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Items</h2>
                 <p className="text-sm text-muted-foreground">
@@ -529,35 +568,57 @@ const CreatePurchasePage: React.FC = () => {
                           Unit Price
                         </span>
                       </div>
-                      <div className="relative min-w-0 lg:col-span-12">
-                        <label className="sr-only">Discount %</label>
-                        <input
-                          className="peer h-11 w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus:ring-2 ring-ring transition placeholder-transparent"
-                          type="number"
-                          min={0}
-                          max={100}
-                          placeholder=" "
-                          value={it.discount || 0}
-                          onChange={(e) =>
-                            updateItem(setForm, idx, {
-                              discount: Number(e.target.value) || 0,
-                            })
-                          }
-                        />
-                        <span className="pointer-events-none absolute left-3 -top-2 bg-background px-1 rounded text-xs text-muted-foreground transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-[15px] peer-placeholder-shown:bg-transparent peer-focus:-top-2 peer-focus:bg-background peer-focus:text-foreground">
-                          Discount %
-                        </span>
-                      </div>
+
+                      {/* Collapsible more (Discount %) */}
+                      {moreOpen[idx] && (
+                        <div className="relative min-w-0 lg:col-span-12">
+                          <label className="sr-only">Discount %</label>
+                          <input
+                            className="peer h-11 w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus:ring-2 ring-ring transition placeholder-transparent"
+                            type="number"
+                            min={0}
+                            max={100}
+                            placeholder=" "
+                            value={it.discount || 0}
+                            onChange={(e) =>
+                              updateItem(setForm, idx, {
+                                discount: Number(e.target.value) || 0,
+                              })
+                            }
+                          />
+                          <span className="pointer-events-none absolute left-3 -top-2 bg-background px-1 rounded text-xs text-muted-foreground transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-[15px] peer-placeholder-shown:bg-transparent peer-focus:-top-2 peer-focus:bg-background peer-focus:text-foreground">
+                            Discount %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="mt-3 flex justify-end">
-                      <Button
+                    <div className="mt-3 flex items-center justify-between">
+                      <button
                         type="button"
-                        variant="outline"
-                        onClick={() => removeItem(idx)}
+                        className="text-sm text-muted-foreground hover:underline"
+                        onClick={() =>
+                          setMoreOpen((m) => ({ ...m, [idx]: !m[idx] }))
+                        }
                       >
-                        Remove Item
-                      </Button>
+                        {moreOpen[idx] ? "Hide" : "More"}
+                      </button>
+                      <div className="space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => duplicateItem(idx)}
+                        >
+                          Duplicate
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => removeItem(idx)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );

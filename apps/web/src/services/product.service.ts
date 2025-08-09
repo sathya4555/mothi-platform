@@ -31,4 +31,28 @@ export const productService = {
     const { data } = await api.get("/products/subcategories/all");
     return data as Subcategory[];
   },
+
+  async createProduct(input: {
+    name: string;
+    size: string;
+    category: "small" | "big" | "king";
+    price?: number;
+    isActive?: boolean;
+  }) {
+    const { data } = await api.post("/products", input);
+    return data as Product;
+  },
+
+  async createSubcategory(input: {
+    productId: number;
+    value: string;
+    pieceValue?: number;
+    category: SubcategoryCategory;
+    isActive?: boolean;
+    activationDate?: string;
+    expiryDate?: string;
+  }) {
+    const { data } = await api.post("/products/subcategories", input);
+    return data as Subcategory;
+  },
 };

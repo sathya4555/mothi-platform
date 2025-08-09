@@ -11,13 +11,19 @@ const Tile: React.FC<{
   to?: string;
 }> = ({ title, value, to }) => {
   const content = (
-    <div className="rounded-xl border border-border bg-card/60 p-4 hover:bg-accent/30 transition-colors">
+    <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 shadow-sm hover:shadow transition-shadow">
       <div className="text-sm text-muted-foreground">{title}</div>
-      <div className="mt-2 text-2xl font-semibold">{value}</div>
+      <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
     </div>
   );
   return to ? <Link to={to}>{content}</Link> : content;
 };
+
+const Skeleton: React.FC<{ className?: string }> = ({ className }) => (
+  <div
+    className={`animate-pulse rounded-md bg-muted/40 ${className || "h-6"}`}
+  />
+);
 
 const ProgressCircle: React.FC<{ percent: number }> = ({ percent }) => {
   const r = 48;
@@ -25,7 +31,18 @@ const ProgressCircle: React.FC<{ percent: number }> = ({ percent }) => {
   const clamped = Math.max(0, Math.min(100, percent));
   const offset = c - (clamped / 100) * c;
   return (
-    <svg width={140} height={140} viewBox="0 0 140 140">
+    <svg
+      width={140}
+      height={140}
+      viewBox="0 0 140 140"
+      className="drop-shadow-sm"
+    >
+      <defs>
+        <linearGradient id="pg" x1="0" x2="1">
+          <stop offset="0%" stopColor="hsl(var(--primary))" />
+          <stop offset="100%" stopColor="#22c55e" />
+        </linearGradient>
+      </defs>
       <circle
         cx="70"
         cy="70"
@@ -38,7 +55,7 @@ const ProgressCircle: React.FC<{ percent: number }> = ({ percent }) => {
         cx="70"
         cy="70"
         r={r}
-        stroke="#22c55e"
+        stroke="url(#pg)"
         strokeWidth="12"
         fill="none"
         strokeLinecap="round"
@@ -66,7 +83,7 @@ const MiniBars: React.FC<{ values: number[] }> = ({ values }) => {
       {values.map((v, i) => (
         <div
           key={i}
-          className="w-3 rounded bg-emerald-400"
+          className="w-3 rounded bg-emerald-400/90 dark:bg-emerald-300/90"
           style={{ height: `${(v / max) * 100}%` }}
         />
       ))}
@@ -79,12 +96,24 @@ const MiniArea: React.FC<{ points: number[] }> = ({ points }) => {
   const h = 100;
   const max = Math.max(1, ...points);
   const step = w / Math.max(1, points.length - 1);
-  const path = points
+  const line = points
     .map((p, i) => `${i === 0 ? "M" : "L"}${i * step},${h - (p / max) * h}`)
     .join(" ");
+  const area = `${line} L ${w},${h} L 0,${h} Z`;
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="w-full">
-      <path d={path} fill="none" stroke="#10b981" strokeWidth={2} />
+      <defs>
+        <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0%"
+            stopColor="hsl(var(--primary))"
+            stopOpacity="0.35"
+          />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#ag)" />
+      <path d={line} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} />
     </svg>
   );
 };
@@ -106,7 +135,7 @@ const DashboardPage: React.FC = () => {
     } catch {}
   };
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading } = useQuery({
     queryKey: ["purchases", "stats"],
     queryFn: () => purchaseService.stats(),
   });
@@ -209,104 +238,145 @@ const DashboardPage: React.FC = () => {
           </div>
         </header>
 
+        {/* Quick metrics */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </>
+          ) : (
+            <>
+              <Tile
+                title="Total Purchases"
+                value={stats?.summary.totalPurchases ?? 0}
+              />
+              <Tile
+                title="Avg Order Value"
+                value={`₹ ${(stats?.sales.averageOrderValue ?? 0).toFixed(2)}`}
+              />
+              <Tile
+                title="Unique Parties"
+                value={stats?.parties.uniqueCount ?? 0}
+              />
+            </>
+          )}
+        </div>
+
         {/* Top grid: Comparison + Goals */}
         <div className="grid gap-6 grid-cols-1 xl:grid-cols-3">
-          <div className="xl:col-span-2 rounded-2xl border border-border bg-card/60 p-5">
+          <div className="xl:col-span-2 rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-5">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold">Comparison</div>
               <div className="text-sm text-muted-foreground">{period}</div>
             </div>
-            <div className="mt-4 grid gap-6 sm:grid-cols-2">
-              <div className="space-y-3">
-                <div className="text-sm text-muted-foreground">
-                  Revenue (7d)
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-2xl font-semibold">
-                    ₹ {comparison.revCurr.toFixed(2)}
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${comparison.revDelta >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}
-                  >
-                    {comparison.revDelta >= 0 ? (
-                      <svg
-                        className="mr-1 h-3 w-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M12 19V5M5 12l7-7 7 7" />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="mr-1 h-3 w-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M12 5v14M19 12l-7 7-7-7" />
-                      </svg>
-                    )}
-                    {Math.abs(comparison.revDelta).toFixed(1)}%
-                  </span>
-                </div>
-                <MiniArea points={weeklySeries} />
-                <div className="text-xs text-muted-foreground">
-                  Prev 7d: ₹ {comparison.revPrev.toFixed(2)}
-                </div>
+            {isLoading ? (
+              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
               </div>
-              <div className="space-y-3">
-                <div className="text-sm text-muted-foreground">Orders (7d)</div>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-2xl font-semibold">
-                    {comparison.cntCurr}
+            ) : (
+              <>
+                <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-3">
+                    <div className="text-sm text-muted-foreground">
+                      Revenue (7d)
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-2xl font-semibold">
+                        ₹ {comparison.revCurr.toFixed(2)}
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${comparison.revDelta >= 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"}`}
+                      >
+                        {comparison.revDelta >= 0 ? (
+                          <svg
+                            className="mr-1 h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="mr-1 h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                          </svg>
+                        )}
+                        {Math.abs(comparison.revDelta).toFixed(1)}%
+                      </span>
+                    </div>
+                    <MiniArea points={weeklySeries} />
+                    <div className="text-xs text-muted-foreground">
+                      Prev 7d: ₹ {comparison.revPrev.toFixed(2)}
+                    </div>
                   </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${comparison.cntDelta >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}
-                  >
-                    {comparison.cntDelta >= 0 ? (
-                      <svg
-                        className="mr-1 h-3 w-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                  <div className="space-y-3">
+                    <div className="text-sm text-muted-foreground">
+                      Orders (7d)
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-2xl font-semibold">
+                        {comparison.cntCurr}
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${comparison.cntDelta >= 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"}`}
                       >
-                        <path d="M12 19V5M5 12l7-7 7 7" />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="mr-1 h-3 w-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M12 5v14M19 12l-7 7-7-7" />
-                      </svg>
-                    )}
-                    {Math.abs(comparison.cntDelta).toFixed(1)}%
-                  </span>
+                        {comparison.cntDelta >= 0 ? (
+                          <svg
+                            className="mr-1 h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="mr-1 h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                          </svg>
+                        )}
+                        {Math.abs(comparison.cntDelta).toFixed(1)}%
+                      </span>
+                    </div>
+                    <MiniArea points={weeklyOrderSeries} />
+                    <div className="text-xs text-muted-foreground">
+                      Prev 7d: {comparison.cntPrev}
+                    </div>
+                  </div>
                 </div>
-                <MiniArea points={weeklyOrderSeries} />
-                <div className="text-xs text-muted-foreground">
-                  Prev 7d: {comparison.cntPrev}
+                <div className="mt-5">
+                  <Button variant="secondary" asChild>
+                    <Link to="/purchases">See details</Link>
+                  </Button>
                 </div>
-              </div>
-            </div>
-            <div className="mt-5">
-              <Button variant="secondary" asChild>
-                <Link to="/purchases">See details</Link>
-              </Button>
-            </div>
+              </>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card/60 p-5">
+          <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-5">
             <div className="text-base font-semibold">Goals Performance</div>
             <div className="mt-4 flex items-center gap-5">
-              <ProgressCircle percent={completedPct} />
+              {isLoading ? (
+                <Skeleton className="h-[140px] w-[140px] rounded-full" />
+              ) : (
+                <ProgressCircle percent={completedPct} />
+              )}
               <div className="space-y-3">
                 <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm">
                   This period
@@ -332,7 +402,7 @@ const DashboardPage: React.FC = () => {
 
         {/* Middle grid: Sales report, By type, Insights */}
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card/60 p-5">
+          <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-5">
             <div className="flex items-center justify-between">
               <div className="text-base font-semibold">Sales report</div>
               <Link
@@ -343,7 +413,11 @@ const DashboardPage: React.FC = () => {
               </Link>
             </div>
             <div className="mt-4">
-              <MiniArea points={weeklySeries} />
+              {isLoading ? (
+                <Skeleton className="h-28" />
+              ) : (
+                <MiniArea points={weeklySeries} />
+              )}
               <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
                 <div>Sun</div>
                 <div>Mon</div>
@@ -356,7 +430,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
+          <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-5 space-y-3">
             <div className="text-base font-semibold">Most Impressions</div>
             <div className="rounded-xl border border-border bg-background p-3 text-sm flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -396,33 +470,45 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
+          <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-5 space-y-3">
             <div className="text-base font-semibold">Status Overview</div>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl border border-border bg-background p-3">
+              <Link
+                to="/purchases?status=confirmation_pending"
+                className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+              >
                 Pending
                 <div className="text-lg font-semibold">
                   {stats?.summary.confirmationPending ?? 0}
                 </div>
-              </div>
-              <div className="rounded-xl border border-border bg-background p-3">
+              </Link>
+              <Link
+                to="/purchases?status=processing"
+                className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+              >
                 Processing
                 <div className="text-lg font-semibold">
                   {stats?.summary.processing ?? 0}
                 </div>
-              </div>
-              <div className="rounded-xl border border-border bg-background p-3">
+              </Link>
+              <Link
+                to="/purchases?status=payment_pending"
+                className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+              >
                 Payment
                 <div className="text-lg font-semibold">
                   {stats?.summary.pendingPayment ?? 0}
                 </div>
-              </div>
-              <div className="rounded-xl border border-border bg-background p-3">
+              </Link>
+              <Link
+                to="/purchases?status=completed"
+                className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+              >
                 Completed
                 <div className="text-lg font-semibold">
                   {stats?.summary.completed ?? 0}
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </div>
@@ -441,18 +527,28 @@ const DashboardPage: React.FC = () => {
             )}
           </div>
           <div className="grid gap-3">
-            {stats?.recentActivity?.length ? (
+            {isLoading ? (
+              <>
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </>
+            ) : stats?.recentActivity?.length ? (
               stats.recentActivity.map((r: any) => (
-                <div
+                <Link
                   key={r.id}
-                  className="rounded-xl border border-border bg-card/60 p-4 flex items-center justify-between"
+                  to={`/purchases/${r.id}`}
+                  className="rounded-xl border border-border bg-card/60 p-4 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         title="Copy ID"
-                        onClick={() => copyToClipboard(r.uniqueId)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          copyToClipboard(r.uniqueId);
+                        }}
                         className="font-mono text-xs md:text-sm hover:underline truncate max-w-[60vw] md:max-w-[30vw] text-left"
                       >
                         {shortId(r.uniqueId)}
@@ -460,8 +556,11 @@ const DashboardPage: React.FC = () => {
                       <button
                         type="button"
                         aria-label="Copy"
-                        onClick={() => copyToClipboard(r.uniqueId)}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-border hover:bg-accent hover:text-accent-foreground"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          copyToClipboard(r.uniqueId);
+                        }}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-border hover:bg-background/50"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -492,7 +591,7 @@ const DashboardPage: React.FC = () => {
                   <div className="text-sm whitespace-nowrap">
                     ₹ {Number(r.amount).toFixed(2)}
                   </div>
-                </div>
+                </Link>
               ))
             ) : (
               <div className="text-muted-foreground">No recent activity</div>

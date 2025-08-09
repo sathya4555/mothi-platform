@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   purchaseService,
   type PurchaseListItem,
+  type Paginated,
 } from "@/services/purchase.service";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -75,6 +76,8 @@ const PurchasesListPage: React.FC = () => {
   const sort = get("sort") || "desc";
   const salesType = get("salesType");
   const agentId = get("agentId");
+  const page = Number(get("page") || "1");
+  const limit = 10;
 
   // Mobile filters state
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -89,6 +92,13 @@ const PurchasesListPage: React.FC = () => {
   };
   const shortId = (id: string) =>
     id.length > 14 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id;
+
+  // Always scroll to top when page changes (reliable on mobile)
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {}
+  }, [page]);
 
   // Load saved presets on first mount if no filters in URL
   useEffect(() => {
@@ -110,12 +120,22 @@ const PurchasesListPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { data, isLoading, isError } = useQuery<PurchaseListItem[]>({
+  const { data, isLoading, isError } = useQuery<Paginated<PurchaseListItem>>({
     queryKey: [
       "purchases",
-      { status, partyName, dateFrom, dateTo, sort, salesType, agentId },
+      {
+        status,
+        partyName,
+        dateFrom,
+        dateTo,
+        sort,
+        salesType,
+        agentId,
+        page,
+        limit,
+      },
     ],
-    queryFn: () =>
+    queryFn: async (): Promise<Paginated<PurchaseListItem>> =>
       purchaseService.list({
         status,
         partyName,
@@ -124,6 +144,8 @@ const PurchasesListPage: React.FC = () => {
         sort,
         salesType,
         agentId: agentId || undefined,
+        page,
+        limit,
       }),
   });
 
@@ -137,7 +159,7 @@ const PurchasesListPage: React.FC = () => {
 
   // CSV Export
   const exportCSV = () => {
-    const rows = (data || []).map((p) => ({
+    const rows = (data?.items || []).map((p) => ({
       invoiceDate: p.invoiceDate || "",
       party: p.party?.name || "",
       salesType: p.salesType,
@@ -165,7 +187,13 @@ const PurchasesListPage: React.FC = () => {
       ]),
     ]
       .map((row) =>
-        row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")
+        row
+          .map((cell) => {
+            const s = String(cell);
+            const escaped = s.replace(/"/g, '""');
+            return `"${escaped}"`;
+          })
+          .join(",")
       )
       .join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -211,6 +239,12 @@ const PurchasesListPage: React.FC = () => {
     startX: number;
     startW: number;
   } | null>(null);
+  const topRef = useRef<HTMLDivElement | null>(null);
+  const scrollToTop = () => {
+    try {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {}
+  };
 
   const startDrag = (key: string, e: React.MouseEvent<HTMLDivElement>) => {
     dragging.current = { key, startX: e.clientX, startW: colWidths[key] };
@@ -343,6 +377,7 @@ const PurchasesListPage: React.FC = () => {
         </div>
 
         {/* Mobile cards */}
+        <div ref={topRef} />
         <div className="md:hidden grid gap-4">
           {/* Mobile status dropdown + Filters button */}
           <div className="-mx-4 px-4">
@@ -367,6 +402,12 @@ const PurchasesListPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Legend (mobile) */}
+          <div className="-mx-4 px-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-block h-2.5 w-2.5 rounded bg-red-400" />
+            <span>Overdue (&gt;7 days since invoice date)</span>
+          </div>
+
           {isLoading && (
             <div className="rounded-xl border border-border p-4">
               Loading...
@@ -377,8 +418,8 @@ const PurchasesListPage: React.FC = () => {
               Failed to load purchases
             </div>
           )}
-          {data?.length
-            ? data.map((p) => (
+          {data && data.items && data.items.length
+            ? data.items.map((p) => (
                 <div
                   key={p.id}
                   className={`rounded-2xl border p-4 shadow-sm ${isOverdue(p.invoiceDate) ? "border-red-400" : "border-border"}`}
@@ -496,6 +537,11 @@ const PurchasesListPage: React.FC = () => {
 
         {/* Desktop table with sticky header and resizable columns */}
         <div className="hidden md:block overflow-auto rounded-2xl border border-border bg-card/60">
+          {/* Legend (desktop) */}
+          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur px-5 py-2 border-b border-border flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-block h-2.5 w-2.5 rounded bg-red-400" />
+            <span>Overdue (&gt;7 days since invoice date)</span>
+          </div>
           <table className="w-full text-sm table-fixed">
             <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur">
               <tr className="text-muted-foreground">
@@ -537,11 +583,11 @@ const PurchasesListPage: React.FC = () => {
                   </td>
                 </tr>
               )}
-              {data?.length
-                ? data.map((p, i) => (
+              {data && data.items && data.items.length
+                ? data.items.map((p, i) => (
                     <tr
                       key={p.id}
-                      className={`${i % 2 === 0 ? "bg-background/30" : "bg-transparent"} ${isOverdue(p.invoiceDate) ? "bg-red-50" : ""}`}
+                      className={`${i % 2 === 0 ? "bg-background/30" : "bg-transparent"} ${isOverdue(p.invoiceDate) ? "bg-red-50 dark:bg-red-900/30" : ""}`}
                     >
                       <td
                         className="px-5 py-3"
@@ -618,6 +664,34 @@ const PurchasesListPage: React.FC = () => {
                   )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination controls */}
+        <div className="flex items-center justify-between gap-2 pt-4">
+          <div className="text-sm text-muted-foreground">
+            Page {data?.page || 1} of{" "}
+            {data
+              ? Math.max(1, Math.ceil(data.total / (data.limit || limit)))
+              : 1}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              disabled={(data?.page || 1) <= 1}
+              onClick={() =>
+                set("page", String(Math.max(1, (data?.page || 1) - 1)))
+              }
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!data || data.page * data.limit >= data.total}
+              onClick={() => set("page", String((data?.page || 1) + 1))}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
     </div>

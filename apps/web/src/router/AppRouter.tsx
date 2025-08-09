@@ -8,6 +8,9 @@ import PartiesPage from "@/routes/PartiesPage";
 import PurchaseDetailsPage from "@/routes/PurchaseDetailsPage";
 import CreatePurchasePage from "@/routes/CreatePurchasePage";
 import AppShell from "@/components/layout/AppShell";
+import ProductsPage from "@/routes/ProductsPage";
+import UsersPage from "@/routes/UsersPage";
+import OnboardingPage from "@/routes/OnboardingPage";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -18,11 +21,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   return <>{children}</>;
 };
 
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="p-6">Loading...</div>;
+  if (user?.role !== "admin") return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
 const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route
           path="/dashboard"
           element={
@@ -70,6 +81,30 @@ const AppRouter: React.FC = () => {
               <AppShell>
                 <PartiesPage />
               </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AppShell>
+                  <ProductsPage />
+                </AppShell>
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AppShell>
+                  <UsersPage />
+                </AppShell>
+              </AdminRoute>
             </ProtectedRoute>
           }
         />

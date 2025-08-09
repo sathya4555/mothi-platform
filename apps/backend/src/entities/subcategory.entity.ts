@@ -29,11 +29,11 @@ export class Subcategory {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ type: 'timestamp' })
-  expiryDate: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  expiryDate: Date | null;
 
-  @Column({ type: 'timestamp' })
-  activationDate: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  activationDate: Date | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   pieceValue: number;

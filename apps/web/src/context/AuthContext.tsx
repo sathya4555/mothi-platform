@@ -38,6 +38,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading: true,
     error: null,
   });
+  const [refreshTimer, setRefreshTimer] = useState<number | null>(null);
+
+  const clearRefreshTimer = () => {
+    if (refreshTimer) {
+      window.clearTimeout(refreshTimer);
+      setRefreshTimer(null);
+    }
+  };
+
+  const scheduleRefresh = () => {
+    clearRefreshTimer();
+    const expMs = authService.getAccessTokenExpiryMs();
+    if (!expMs) return;
+    const now = Date.now();
+    // Refresh 60s before expiry, minimum 10s from now
+    const delay = Math.max(10_000, expMs - now - 60_000);
+    const id = window.setTimeout(async () => {
+      try {
+        await authService.refresh();
+        const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+        const user = deriveUserFromToken(token);
+        setState((s) => ({ ...s, user, isAuthenticated: !!token }));
+      } catch {
+        // if refresh fails, let api interceptor handle redirect on 401
+      } finally {
+        scheduleRefresh();
+      }
+    }, delay);
+    setRefreshTimer(id as unknown as number);
+  };
 
   const deriveUserFromToken = (token: string | null): User | null => {
     try {
@@ -62,6 +92,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       user,
       isLoading: false,
     }));
+    scheduleRefresh();
+    return clearRefreshTimer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
@@ -76,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isAuthenticated: true,
         isLoading: false,
       }));
+      scheduleRefresh();
     } catch (e: any) {
       setState((s) => ({
         ...s,
@@ -88,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     setState((s) => ({ ...s, isLoading: true }));
+    clearRefreshTimer();
     await authService.logout();
     setState({
       user: null,

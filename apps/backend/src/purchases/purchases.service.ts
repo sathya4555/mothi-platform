@@ -137,7 +137,12 @@ export class PurchasesService {
     userId: number,
     userRole: string,
     filters?: any,
-  ): Promise<Purchase[]> {
+  ): Promise<{
+    items: Purchase[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     let query = this.purchaseRepository
       .createQueryBuilder('purchase')
       .leftJoinAndSelect('purchase.agent', 'agent')
@@ -191,7 +196,17 @@ export class PurchasesService {
       }
     }
 
-    return query.getMany();
+    const page = Math.max(parseInt(filters?.page as any) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(filters?.limit as any) || 10, 1),
+      100,
+    );
+    const [items, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return { items, total, page, limit };
   }
 
   async findOne(
@@ -573,4 +588,3 @@ export class PurchasesService {
     };
   }
 }
- 

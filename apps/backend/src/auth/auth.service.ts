@@ -90,22 +90,19 @@ export class AuthService {
     email: string;
     phone: string;
     role: string;
-    password?: string;
   }): Promise<any> {
-    // Check if user already exists
-    const existingUser = await this.usersService.findByEmail(userData.email);
+    // Check if user already exists (case-insensitive)
+    const existingUser = await this.usersService.findByEmailInsensitive(
+      userData.email,
+    );
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Generate a temporary password if not provided
-    const tempPassword = userData.password || this.generateTempPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-    // Create user with hashed password
+    // Create user without password; it will be set during onboarding
     const user = await this.usersService.createUser({
       ...userData,
-      password: hashedPassword,
+      password: null as any,
     });
 
     // Generate one-time setup token
@@ -118,7 +115,6 @@ export class AuthService {
         email: user.email,
         role: user.role,
       },
-      tempPassword,
       setupToken,
     };
   }
@@ -133,11 +129,11 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_ACCESS_SECRET,
-        expiresIn: '15m', // 15 minutes
+        expiresIn: '12h', // 12 hours
       }),
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: '7d', // 7 days
+        expiresIn: '20d', // 20 days
       }),
     ]);
 
@@ -159,7 +155,42 @@ export class AuthService {
     });
   }
 
-  private generateTempPassword(): string {
-    return Math.random().toString(36).slice(-8);
+  async getSetupInfo(token: string) {
+    try {
+      const decoded: any = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SETUP_SECRET || process.env.JWT_ACCESS_SECRET,
+      });
+      if (decoded?.type !== 'setup') throw new Error('Invalid token');
+      const user = await this.usersService.findById(decoded.sub);
+      if (!user) throw new UnauthorizedException('Invalid setup token');
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+      };
+    } catch (e) {
+      throw new UnauthorizedException('Invalid setup token');
+    }
+  }
+
+  async setupPassword(payload: {
+    token: string;
+    name: string;
+    phone: string;
+    password: string;
+  }) {
+    const info = await this.getSetupInfo(payload.token);
+    const hashedPassword = await bcrypt.hash(payload.password, 10);
+    await this.usersService.updateUser(info.id, {
+      name: payload.name?.trim() || info.name,
+      phone: payload.phone?.trim() || info.phone,
+      isActive: true,
+    });
+    // save password separately to avoid overwriting fields unintentionally
+    await (this as any).usersService['usersRepository'].update(info.id, {
+      password: hashedPassword,
+    });
+    return { message: 'Password setup successful' };
   }
 }
