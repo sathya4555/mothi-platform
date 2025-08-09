@@ -126,3 +126,4 @@ export class PartiesService {
     return searchQuery.getMany();
   }
 }
+ 

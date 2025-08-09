@@ -1,6 +1,6 @@
-import { extendTheme, type ThemeConfig } from "native-base";
+import { extendTheme } from "native-base";
 
-const config: ThemeConfig = {
+const config = {
   useSystemColorMode: false,
   initialColorMode: "light",
 };
@@ -91,10 +91,6 @@ export const theme = extendTheme({
       defaultProps: {
         borderRadius: "lg",
         borderWidth: 1,
-        _focus: {
-          borderColor: "primary.500",
-          bg: "background.50",
-        },
       },
     },
     Box: {

@@ -20,12 +20,14 @@ import {
 } from "native-base";
 import { Ionicons } from "@expo/vector-icons";
 import { authService, LoginCredentials, User } from "../services/auth.service";
+import { useAuth } from "../context/AuthContext";
 
 interface LoginScreenProps {
   onLoginSuccess: (user: User) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+  const { login, signInLocal } = useAuth();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: "",
     password: "",
@@ -64,43 +66,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     setIsLoading(true);
     try {
-      const response = await authService.login(credentials);
-
-      // Store user data (you might want to decode JWT to get user info)
-      // For now, we'll create a basic user object
-      const user = {
-        id: 1, // This should come from JWT decode
-        name: credentials.email.split("@")[0], // Temporary
-        email: credentials.email,
-        role: "admin" as const, // This should come from JWT decode
-        phone: "",
-        isActive: true,
-      };
-
-      await authService.storeUserData(user);
-      onLoginSuccess(user);
+      await login(credentials);
+      // Navigation is handled by AuthContext state change - no need for onLoginSuccess
     } catch (error: any) {
-      Alert.alert(
-        "Login Failed",
-        error.message || "An error occurred during login. Please try again.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Login Failed", error.message || "Please try again.", [
+        { text: "OK" },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQuickLogin = (role: "admin" | "agent" | "coordinator") => {
-    const testCredentials = {
-      admin: { email: "admin@mothi.com", password: "admin123" },
-      agent: { email: "agent@mothi.com", password: "agent123" },
-      coordinator: {
-        email: "coordinator@mothi.com",
-        password: "coordinator123",
+  const handleQuickLogin = async (role: "admin" | "agent" | "coordinator") => {
+    const quickUsers: Record<string, User> = {
+      admin: {
+        id: 1,
+        email: "admin@mothi.com",
+        name: "Admin",
+        role: "admin",
+        phone: "0000000000",
+        isActive: true,
       },
-    };
+      agent: {
+        id: 2,
+        email: "agent@mothi.com",
+        name: "Agent",
+        role: "agent",
+        phone: "0000000000",
+        isActive: true,
+      },
+      coordinator: {
+        id: 3,
+        email: "coordinator@mothi.com",
+        name: "Coordinator",
+        role: "coordinator",
+        phone: "0000000000",
+        isActive: true,
+      },
+    } as const;
 
-    setCredentials(testCredentials[role]);
+    const user = quickUsers[role];
+    setIsLoading(true);
+    try {
+      await signInLocal(user);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -109,10 +120,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Box flex={1} bg={bgColor} px={6} pt={20} pb={12}>
+        <Box bg={bgColor} px={6} pt={20} pb={12} minHeight="100%">
           {/* Header */}
           <VStack alignItems="center" mb={16}>
             <Box bg="primary.500" p={4} borderRadius="full" mb={6} shadow={4}>
@@ -125,7 +137,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               mb={3}
               textAlign="center"
             >
-              Mothi Platform
+              Mothi Tex
             </Text>
             <Text
               fontSize="lg"
@@ -188,13 +200,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   autoCapitalize="none"
                   autoCorrect={false}
                   size="lg"
+                  variant="filled"
                   borderRadius="xl"
-                  borderColor={errors.email ? "secondary.500" : borderColor}
-                  _focus={{
-                    borderColor: "primary.500",
-                    bg: "background.50",
-                    shadow: 2,
-                  }}
                   InputLeftElement={
                     <Icon
                       as={Ionicons}
@@ -229,13 +236,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   autoCapitalize="none"
                   autoCorrect={false}
                   size="lg"
+                  variant="filled"
                   borderRadius="xl"
-                  borderColor={errors.password ? "secondary.500" : borderColor}
-                  _focus={{
-                    borderColor: "primary.500",
-                    bg: "background.50",
-                    shadow: 2,
-                  }}
                   InputLeftElement={
                     <Icon
                       as={Ionicons}

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
@@ -48,5 +48,22 @@ export class UsersService {
 
   async validatePassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
+  }
+
+  async listUsers(params: { role?: UserRole; search?: string }) {
+    const where: any = {};
+    if (params.role) {
+      where.role = params.role;
+    }
+    if (params.search) {
+      where.name = ILike(`%${params.search}%`);
+    }
+    const users = await this.usersRepository.find({
+      where,
+      select: ['id', 'name', 'role'],
+      order: { name: 'ASC' },
+      take: 50,
+    });
+    return users;
   }
 }

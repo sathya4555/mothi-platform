@@ -1,14 +1,11 @@
+// Learn more https://docs.expo.dev/guides/customizing-metro
 const { getDefaultConfig } = require("expo/metro-config");
 
+/** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Enable web support
-config.resolver.platforms = ["ios", "android", "native", "web"];
-
-// Ensure proper entry point resolution
-config.resolver.alias = {
-  ...config.resolver.alias,
-  'react-native$': 'react-native-web',
-};
+// Add web support
+config.resolver.sourceExts.push("jsx", "js", "ts", "tsx");
+config.resolver.platforms = ["ios", "android", "web"];
 
 module.exports = config;

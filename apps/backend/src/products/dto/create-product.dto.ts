@@ -29,3 +29,4 @@ export class CreateProductDto {
   @IsOptional()
   isActive?: boolean;
 }
+ 

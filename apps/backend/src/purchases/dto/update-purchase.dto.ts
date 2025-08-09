@@ -23,3 +23,4 @@ export class UpdatePurchaseDto extends PartialType(CreatePurchaseDto) {
   @IsOptional()
   finalAmount?: number;
 }
+ 

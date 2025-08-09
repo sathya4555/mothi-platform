@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like } from 'typeorm';
@@ -16,6 +17,7 @@ import { Party } from '../entities/party.entity';
 import { Subcategory } from '../entities/subcategory.entity';
 import { User } from '../entities/user.entity';
 import { CreatePurchaseDto, UpdatePurchaseDto } from './dto';
+import { Product } from '../entities/product.entity';
 
 @Injectable()
 export class PurchasesService {
@@ -30,6 +32,8 @@ export class PurchasesService {
     private subcategoryRepository: Repository<Subcategory>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {}
 
   async create(
@@ -56,6 +60,17 @@ export class PurchasesService {
       throw new NotFoundException('Party not found');
     }
 
+    // Verify agent owns the party
+    const agent = await this.userRepository.findOne({
+      where: { id: agentId },
+    });
+
+    if (agent.role === 'agent' && party.createdBy !== agentId) {
+      throw new ForbiddenException(
+        'You can only create purchases for parties you own',
+      );
+    }
+
     // Calculate totals
     const { totalAmount, gstAmount, finalAmount } =
       this.calculatePurchaseTotals(createPurchaseDto);
@@ -73,10 +88,43 @@ export class PurchasesService {
     const savedPurchase = await this.purchaseRepository.save(purchase);
 
     // Create purchase items
-    const purchaseItems = createPurchaseDto.items.map((item) =>
-      this.purchaseItemRepository.create({
-        ...item,
-        purchaseId: savedPurchase.id,
+    const purchaseItems = await Promise.all(
+      createPurchaseDto.items.map(async (item) => {
+        // Verify product exists
+        const product = await this.productRepository.findOne({
+          where: { id: item.productId },
+        });
+
+        if (!product) {
+          throw new NotFoundException(
+            `Product with ID ${item.productId} not found`,
+          );
+        }
+
+        // Verify subcategory if provided
+        if (item.subcategoryId) {
+          const subcategory = await this.subcategoryRepository.findOne({
+            where: { id: item.subcategoryId, productId: item.productId },
+          });
+
+          if (!subcategory) {
+            throw new NotFoundException(
+              `Subcategory with ID ${item.subcategoryId} not found for product ${item.productId}`,
+            );
+          }
+        }
+
+        const itemTotal = item.quantity * item.unitPrice;
+        const itemDiscount = item.discount
+          ? (itemTotal * item.discount) / 100
+          : 0;
+        const totalPrice = itemTotal - itemDiscount;
+
+        return this.purchaseItemRepository.create({
+          ...item,
+          purchaseId: savedPurchase.id,
+          totalPrice,
+        });
       }),
     );
 
@@ -224,6 +272,12 @@ export class PurchasesService {
     userRole: string,
   ): Promise<Purchase> {
     const purchase = await this.findOne(id, userId, userRole);
+
+    // Auto-generate invoice number when status changes to completed
+    if (status === PurchaseStatus.COMPLETED && !purchase.invoiceNumber) {
+      return this.generateInvoiceNumber(id, userId, userRole);
+    }
+
     purchase.status = status;
     return this.purchaseRepository.save(purchase);
   }
@@ -239,8 +293,29 @@ export class PurchasesService {
       throw new BadRequestException('Invoice number already exists');
     }
 
-    // Generate invoice number (you can customize this logic)
-    const invoiceNumber = `INV-${Date.now()}-${purchase.id}`;
+    // Get current date components
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+
+    // Get the latest invoice number for this month
+    const latestInvoice = await this.purchaseRepository
+      .createQueryBuilder('purchase')
+      .where('purchase.invoiceNumber LIKE :pattern', {
+        pattern: `INV-${year}${month}-%`,
+      })
+      .orderBy('purchase.invoiceNumber', 'DESC')
+      .getOne();
+
+    // Generate sequence number
+    let sequence = 1;
+    if (latestInvoice && latestInvoice.invoiceNumber) {
+      const lastSequence = parseInt(latestInvoice.invoiceNumber.split('-')[2]);
+      sequence = lastSequence + 1;
+    }
+
+    // Format: INV-YYYYMM-XXXX (e.g., INV-202508-0001)
+    const invoiceNumber = `INV-${year}${month}-${String(sequence).padStart(4, '0')}`;
     purchase.invoiceNumber = invoiceNumber;
 
     return this.purchaseRepository.save(purchase);
@@ -250,6 +325,8 @@ export class PurchasesService {
   async getDashboardStats(userId: number, userRole: string) {
     const baseQuery = this.purchaseRepository
       .createQueryBuilder('purchase')
+      .leftJoinAndSelect('purchase.party', 'party')
+      .leftJoinAndSelect('purchase.purchaseItems', 'items')
       .where(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
         userId,
       });
@@ -259,66 +336,213 @@ export class PurchasesService {
       pendingPayment,
       confirmationPending,
       processing,
+      completed,
       totalSalesValue,
       salesByType,
+      recentPurchases,
+      uniqueParties,
     ] = await Promise.all([
+      // Total purchases
       baseQuery.getCount(),
+
+      // Pending payment count
       baseQuery
         .andWhere('purchase.status = :status', {
           status: PurchaseStatus.PAYMENT_PENDING,
         })
         .getCount(),
+
+      // Confirmation pending count
       baseQuery
         .andWhere('purchase.status = :status', {
           status: PurchaseStatus.CONFIRMATION_PENDING,
         })
         .getCount(),
+
+      // Processing count
       baseQuery
         .andWhere('purchase.status = :status', {
           status: PurchaseStatus.PROCESSING,
         })
         .getCount(),
-      baseQuery.select('SUM(purchase.finalAmount)', 'total').getRawOne(),
+
+      // Completed count
       baseQuery
-        .select('purchase.salesType', 'salesType')
+        .andWhere('purchase.status = :status', {
+          status: PurchaseStatus.COMPLETED,
+        })
+        .getCount(),
+
+      // Total sales value
+      this.purchaseRepository
+        .createQueryBuilder('purchase')
+        .select('COALESCE(SUM(purchase.finalAmount), 0)', 'total')
+        .where(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
+          userId,
+        })
+        .getRawOne(),
+
+      // Sales by type with amount
+      this.purchaseRepository
+        .createQueryBuilder('purchase')
+        .select('purchase.salesType', 'type')
         .addSelect('COUNT(*)', 'count')
-        .addSelect('SUM(purchase.finalAmount)', 'total')
+        .addSelect('COALESCE(SUM(purchase.finalAmount), 0)', 'amount')
+        .where(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
+          userId,
+        })
         .groupBy('purchase.salesType')
         .getRawMany(),
+
+      // Recent purchases (last 5)
+      this.purchaseRepository
+        .createQueryBuilder('purchase')
+        .leftJoinAndSelect('purchase.party', 'party')
+        .where(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
+          userId,
+        })
+        .orderBy('purchase.createdAt', 'DESC')
+        .take(5)
+        .getMany(),
+
+      // Unique parties count
+      this.purchaseRepository
+        .createQueryBuilder('purchase')
+        .select('COUNT(DISTINCT purchase.partyId)', 'count')
+        .where(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
+          userId,
+        })
+        .getRawOne(),
     ]);
 
+    // Calculate average order value
+    const avgOrderValue =
+      totalPurchases > 0 ? totalSalesValue.total / totalPurchases : 0;
+
     return {
-      totalPurchases,
-      pendingPayment,
-      confirmationPending,
-      processing,
-      totalSalesValue: totalSalesValue?.total || 0,
-      salesByType,
+      summary: {
+        totalPurchases,
+        pendingPayment,
+        confirmationPending,
+        processing,
+        completed,
+      },
+      sales: {
+        totalValue: Number(totalSalesValue.total) || 0,
+        averageOrderValue: Number(avgOrderValue.toFixed(2)),
+        byType: salesByType.map((item) => ({
+          type: item.type,
+          count: Number(item.count),
+          amount: Number(item.amount),
+        })),
+      },
+      parties: {
+        uniqueCount: Number(uniqueParties.count),
+      },
+      recentActivity: recentPurchases.map((purchase) => ({
+        id: purchase.id,
+        uniqueId: purchase.uniqueId,
+        partyName: purchase.party.name,
+        amount: purchase.finalAmount,
+        status: purchase.status,
+        date: purchase.createdAt,
+      })),
     };
   }
 
   async getOverduePurchases(
     userId: number,
     userRole: string,
-  ): Promise<Purchase[]> {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  ): Promise<{ overdue: any[]; summary: any }> {
+    // For testing, use 1 minute ago instead of 7 days
+    const oneMinuteAgo = new Date(new Date().getTime() - 60000);
 
-    let query = this.purchaseRepository
+    const baseQuery = this.purchaseRepository
       .createQueryBuilder('purchase')
       .leftJoinAndSelect('purchase.agent', 'agent')
       .leftJoinAndSelect('purchase.party', 'party')
-      .where('purchase.invoiceDate < :sevenDaysAgo', { sevenDaysAgo })
+      .leftJoinAndSelect('purchase.purchaseItems', 'items')
+      .where('purchase.createdAt < :oneMinuteAgo', { oneMinuteAgo })
       .andWhere('purchase.status != :completed', {
         completed: PurchaseStatus.COMPLETED,
-      })
-      .orderBy('purchase.invoiceDate', 'ASC');
+      });
 
     if (userRole === 'agent') {
-      query = query.andWhere('purchase.agentId = :userId', { userId });
+      baseQuery.andWhere('purchase.agentId = :userId', { userId });
     }
 
-    return query.getMany();
+    // Get overdue purchases
+    const overduePurchases = await baseQuery
+      .orderBy('purchase.createdAt', 'ASC')
+      .getMany();
+
+    // Calculate summary statistics
+    const [totalAmount, statusCounts] = await Promise.all([
+      // Total overdue amount
+      this.purchaseRepository
+        .createQueryBuilder('purchase')
+        .select('COALESCE(SUM(purchase.finalAmount), 0)', 'total')
+        .where('purchase.createdAt < :oneMinuteAgo', { oneMinuteAgo })
+        .andWhere('purchase.status != :completed', {
+          completed: PurchaseStatus.COMPLETED,
+        })
+        .andWhere(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
+          userId,
+        })
+        .getRawOne(),
+
+      // Count by status
+      this.purchaseRepository
+        .createQueryBuilder('purchase')
+        .select('purchase.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .where('purchase.createdAt < :oneMinuteAgo', { oneMinuteAgo })
+        .andWhere('purchase.status != :completed', {
+          completed: PurchaseStatus.COMPLETED,
+        })
+        .andWhere(userRole === 'agent' ? 'purchase.agentId = :userId' : '1=1', {
+          userId,
+        })
+        .groupBy('purchase.status')
+        .getRawMany(),
+    ]);
+
+    // Format overdue purchases
+    const formattedOverdue = overduePurchases.map((purchase) => {
+      const daysOverdue = Math.floor(
+        (new Date().getTime() - new Date(purchase.createdAt).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+
+      return {
+        id: purchase.id,
+        uniqueId: purchase.uniqueId,
+        partyName: purchase.party.name,
+        partyId: purchase.partyId,
+        agentName: purchase.agent.name,
+        agentId: purchase.agentId,
+        amount: purchase.finalAmount,
+        status: purchase.status,
+        createdAt: purchase.createdAt,
+        daysOverdue,
+        itemCount: purchase.purchaseItems.length,
+      };
+    });
+
+    // Format status counts
+    const statusCountMap = statusCounts.reduce((acc, curr) => {
+      acc[curr.status] = Number(curr.count);
+      return acc;
+    }, {});
+
+    return {
+      overdue: formattedOverdue,
+      summary: {
+        totalCount: formattedOverdue.length,
+        totalAmount: Number(totalAmount.total) || 0,
+        byStatus: statusCountMap,
+      },
+    };
   }
 
   private calculatePurchaseTotals(purchaseData: any) {
@@ -349,3 +573,4 @@ export class PurchasesService {
     };
   }
 }
+ 

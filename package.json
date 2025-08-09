@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "turbo": "^2.5.5"
+    "turbo": "^2.5.5",
+    "@types/react": "~19.0.10"
   },
   "packageManager": "npm@10.1.0",
   "workspaces": [

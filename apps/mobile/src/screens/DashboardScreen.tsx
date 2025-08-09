@@ -12,11 +12,17 @@ import {
   Divider,
 } from "native-base";
 import { Ionicons } from "@expo/vector-icons";
-import { authService, User } from "../services/auth.service";
+import { authService } from "../services/auth.service";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { useNavigation } from "@react-navigation/native";
+
+interface DashboardUser {
+  name: string;
+  role: "admin" | "agent" | "coordinator";
+}
 
 interface DashboardScreenProps {
-  user: User;
+  user: DashboardUser;
   onLogout: () => void;
 }
 
@@ -24,6 +30,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   user,
   onLogout,
 }) => {
+  const navigation = useNavigation<any>();
+  console.log("🏠 DashboardScreen rendered with user:", user);
   // Simple color values for clean theme support with explicit dark mode colors
   const bgColor = useColorModeValue("#ffffff", "#171717");
   const surfaceColor = useColorModeValue("#fafafa", "#262626");
@@ -174,7 +182,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       </Text>
       <VStack space={4}>
         <HStack space={4} flexWrap="wrap">
-          <Pressable flex={1} minW="48%">
+          <Pressable
+            flex={1}
+            minW="48%"
+            onPress={() => navigation.navigate("CreatePurchase")}
+          >
             <Box
               bg={cardBg}
               p={6}
@@ -198,7 +210,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </Text>
             </Box>
           </Pressable>
-          <Pressable flex={1} minW="48%">
+          <Pressable
+            flex={1}
+            minW="48%"
+            onPress={() => navigation.navigate("PurchaseList")}
+          >
             <Box
               bg={cardBg}
               p={6}
@@ -222,7 +238,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </Text>
             </Box>
           </Pressable>
-          <Pressable flex={1} minW="48%">
+          <Pressable
+            flex={1}
+            minW="48%"
+            onPress={() => navigation.navigate("PurchaseList")}
+          >
             <Box
               bg={cardBg}
               p={6}
@@ -246,7 +266,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </Text>
             </Box>
           </Pressable>
-          <Pressable flex={1} minW="48%">
+          <Pressable
+            flex={1}
+            minW="48%"
+            onPress={() => navigation.navigate("PurchaseList")}
+          >
             <Box
               bg={cardBg}
               p={6}
@@ -483,7 +507,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   return (
     <Box flex={1} bg={bgColor}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}
+      >
         {/* Header */}
         <Box
           bg={surfaceColor}
@@ -496,7 +524,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         >
           <HStack justifyContent="space-between" alignItems="center">
             <Box flex={1}>
-              <Text fontSize="sm" color={textSecondary} mb={1} fontWeight="500">
+              <Text fontSize="sm" color={textColor} mb={1} fontWeight="500">
                 Welcome back,
               </Text>
               <Text fontSize="3xl" fontWeight="800" color={textColor} mb={3}>

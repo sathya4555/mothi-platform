@@ -162,3 +162,4 @@ export class ProductsService {
     return categories.map((cat) => cat.category);
   }
 }
+ 
