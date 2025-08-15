@@ -21,7 +21,7 @@ const UsersPage: React.FC = () => {
     role: AdminUserRole;
   }>({ name: "", email: "", phone: "", role: "agent" });
 
-  // Confirmation state
+  // UI state
   const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
   const [pendingRoleChange, setPendingRoleChange] = useState<{
     user: AdminUserLite;
@@ -31,6 +31,8 @@ const UsersPage: React.FC = () => {
     email: string;
     link: string;
   } | null>(null);
+  const [copiedUserId, setCopiedUserId] = useState<number | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const { data: users, isLoading } = useQuery<AdminUserLite[]>({
     queryKey: ["admin-users", { search, roleFilter }],
@@ -57,6 +59,9 @@ const UsersPage: React.FC = () => {
   const { mutateAsync: deleteUser } = useMutation({
     mutationFn: (id: number) => authService.adminDeleteUser(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+  const { mutateAsync: genReset, isPending: generating } = useMutation({
+    mutationFn: (userId: number) => authService.adminGenerateResetLink(userId),
   });
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -133,9 +138,10 @@ const UsersPage: React.FC = () => {
               <Button type="submit" disabled={creating}>
                 Create
               </Button>
-              <p className="text-xs text-muted-foreground">
-                User will set their password via the invite link.
-              </p>
+              <div className="text-xs text-muted-foreground">
+                An invite link will be generated. Share it with the user to let
+                them set their password.
+              </div>
             </form>
           </div>
 
@@ -160,6 +166,40 @@ const UsersPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Copy reset link icon */}
+                        <button
+                          type="button"
+                          title="Copy reset link"
+                          aria-label="Copy reset link"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border hover:bg-accent hover:text-accent-foreground"
+                          onClick={async () => {
+                            try {
+                              const { setupToken } = await genReset(u.id);
+                              const link = `${window.location.origin}/onboarding?token=${setupToken}`;
+                              await navigator.clipboard.writeText(link);
+                              setCopiedUserId(u.id);
+                              setTimeout(() => setCopiedUserId(null), 1500);
+                            } catch {}
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            className="h-5 w-5"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <rect x="2" y="2" width="13" height="13" rx="2" />
+                          </svg>
+                        </button>
+                        {copiedUserId === u.id && (
+                          <span className="text-xs text-emerald-600">
+                            Copied
+                          </span>
+                        )}
+
                         <select
                           className={inputBase}
                           value={u.role}
@@ -247,6 +287,7 @@ const UsersPage: React.FC = () => {
                           email: (res as any).user?.email || form.email,
                           link,
                         });
+                        setInviteCopied(false);
                       } finally {
                         setConfirmCreateOpen(false);
                       }
@@ -307,29 +348,78 @@ const UsersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Last invite link */}
+      {/* Enhanced Invite Link Modal (Centered) */}
       {lastInvite && (
-        <div className="fixed bottom-4 right-4 z-40 rounded-xl border border-border bg-background p-4 shadow-lg">
-          <div className="text-sm font-medium">Invite Link</div>
-          <div className="text-xs text-muted-foreground">
-            {lastInvite.email}
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              className={inputBase + " w-72"}
-              value={lastInvite.link}
-              readOnly
-            />
-            <Button
-              variant="outline"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(lastInvite.link);
-                } catch {}
-              }}
-            >
-              Copy
-            </Button>
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => {
+              setLastInvite(null);
+              setInviteCopied(false);
+            }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-border bg-background shadow-xl">
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">
+                      Invite link generated
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Share this link with{" "}
+                      <span className="font-medium">{lastInvite.email}</span>.
+                      It expires in 24 hours.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent hover:text-accent-foreground"
+                    aria-label="Dismiss"
+                    onClick={() => {
+                      setLastInvite(null);
+                      setInviteCopied(false);
+                    }}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="currentColor"
+                    >
+                      <path d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.9a1 1 0 0 0 1.41-1.41L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    className={inputBase + " flex-1"}
+                    value={lastInvite.link}
+                    readOnly
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(lastInvite.link);
+                        setInviteCopied(true);
+                        setTimeout(() => setInviteCopied(false), 1500);
+                      } catch {}
+                    }}
+                  >
+                    {inviteCopied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+                {inviteCopied && (
+                  <div className="mt-2 text-[11px] text-emerald-600">
+                    Link copied to clipboard
+                  </div>
+                )}
+                <div className="mt-2 text-[11px] text-muted-foreground">
+                  Note: The user can update their name and phone while setting
+                  the password.
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

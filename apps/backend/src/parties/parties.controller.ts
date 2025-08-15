@@ -31,7 +31,22 @@ export class PartiesController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.AGENT)
-  findAll(@Request() req, @Query('search') search?: string) {
+  findAll(
+    @Request() req,
+    @Query('search') search?: string,
+    @Query('agentId') agentId?: string,
+  ) {
+    // If agentId is provided, filter by that specific agent
+    if (agentId) {
+      return this.partiesService.findByAgent(
+        parseInt(agentId),
+        search,
+        req.user.id,
+        req.user.role,
+      );
+    }
+
+    // If search is provided, use search functionality
     if (search) {
       return this.partiesService.searchParties(
         search,
@@ -39,6 +54,8 @@ export class PartiesController {
         req.user.role,
       );
     }
+
+    // Default: return all parties (filtered by user role)
     return this.partiesService.findAll(req.user.id, req.user.role);
   }
 

@@ -13,7 +13,14 @@ import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { UserRole } from '../entities/user.entity';
 
-import { IsEmail, IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsInt,
+} from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -48,8 +55,26 @@ export class CreateUserDto {
 }
 
 export class SetupPasswordDto {
+  @IsString()
+  @IsNotEmpty()
   token: string;
+
+  @IsString()
+  @IsNotEmpty()
   password: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+}
+
+export class ResetLinkDto {
+  @IsInt()
+  userId: number;
 }
 
 @Controller('auth')
@@ -103,14 +128,21 @@ export class AuthController {
     };
   }
 
+  @Post('reset-link')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async resetLink(@Body() dto: ResetLinkDto) {
+    return this.authService.generateResetLink(dto.userId);
+  }
+
   @Post('setup-password')
   @HttpCode(HttpStatus.OK)
   async setupPassword(@Body() setupPasswordDto: SetupPasswordDto) {
-    // This endpoint would handle the one-time password setup
     return this.authService.setupPassword({
       token: setupPasswordDto.token,
-      name: (setupPasswordDto as any).name,
-      phone: (setupPasswordDto as any).phone,
+      name: setupPasswordDto.name as any,
+      phone: setupPasswordDto.phone as any,
       password: setupPasswordDto.password,
     });
   }

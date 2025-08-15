@@ -51,6 +51,147 @@ export interface DashboardStats {
   }[];
 }
 
+export interface ExecutiveAnalytics {
+  financial: {
+    currentMonthRevenue: number;
+    previousMonthRevenue: number;
+    revenueGrowth: number;
+    revenueTrend: {
+      month: string;
+      revenue: number;
+      orders: number;
+    }[];
+    cashFlow: {
+      status: string;
+      amount: number;
+      count: number;
+    }[];
+  };
+  agentPerformance: {
+    agentId: number;
+    agentName: string;
+    agentEmail: string;
+    totalOrders: number;
+    totalRevenue: number;
+    avgOrderValue: number;
+    completedOrders: number;
+    pendingOrders: number;
+    completionRate: number;
+  }[];
+  customers: {
+    topCustomers: {
+      partyId: number;
+      partyName: string;
+      totalSpent: number;
+      orderCount: number;
+      lastOrder: string;
+      firstOrder: string;
+      avgOrderValue: number;
+    }[];
+    retentionRate: number;
+    newCustomersThisMonth: number;
+    repeatCustomers: number;
+  };
+  operations: {
+    processingTimes: {
+      status: string;
+      avgDays: number;
+      count: number;
+    }[];
+    statusDistribution: {
+      date: string;
+      status: string;
+      count: number;
+    }[];
+    productPerformance: {
+      productName: string;
+      subcategoryName: string;
+      totalQuantity: number;
+      totalRevenue: number;
+      orderCount: number;
+    }[];
+  };
+  risk: {
+    cancellationRate: number;
+    pendingPaymentAmount: number;
+    pendingPaymentCount: number;
+  };
+}
+
+export interface AgentLeaderboards {
+  topRevenueAgents: {
+    agentId: number;
+    agentName: string;
+    agentEmail: string;
+    totalRevenue: number;
+    totalOrders: number;
+    avgOrderValue: number;
+    completedOrders: number;
+    pendingOrders: number;
+  }[];
+  topOrderAgents: {
+    agentId: number;
+    agentName: string;
+    agentEmail: string;
+    totalOrders: number;
+    totalRevenue: number;
+    avgOrderValue: number;
+  }[];
+  topCompletionAgents: {
+    agentId: number;
+    agentName: string;
+    agentEmail: string;
+    totalOrders: number;
+    completedOrders: number;
+    completionRate: number;
+    totalRevenue: number;
+  }[];
+  topEfficiencyAgents: {
+    agentId: number;
+    agentName: string;
+    agentEmail: string;
+    totalOrders: number;
+    avgProcessingDays: number;
+    totalRevenue: number;
+  }[];
+  agentActivityHeatmap: {
+    agentId: number;
+    agentName: string;
+    date: string;
+    ordersCreated: number;
+    revenueGenerated: number;
+  }[];
+}
+
+export interface PredictiveAnalytics {
+  dailyRevenueTrend: {
+    date: string;
+    revenue: number;
+    orders: number;
+  }[];
+  weeklyRevenueTrend: {
+    week: string;
+    revenue: number;
+    orders: number;
+  }[];
+  monthlyRevenueTrend: {
+    month: string;
+    revenue: number;
+    orders: number;
+  }[];
+  seasonalPatterns: {
+    dayOfWeek: number;
+    hourOfDay: number;
+    revenue: number;
+    orders: number;
+  }[];
+  revenueForecast: {
+    date: string;
+    predictedRevenue: number;
+    confidence: number;
+  }[];
+}
+
 export type QuantityType = "piece" | "bale";
 
 export interface CreatePurchaseItemInput {
@@ -90,6 +231,21 @@ export const purchaseService = {
   async stats() {
     const { data } = await api.get("/purchases/stats");
     return data as DashboardStats;
+  },
+
+  async executiveAnalytics() {
+    const { data } = await api.get("/purchases/executive-analytics");
+    return data as ExecutiveAnalytics;
+  },
+
+  async agentLeaderboards() {
+    const { data } = await api.get("/purchases/agent-leaderboards");
+    return data as AgentLeaderboards;
+  },
+
+  async predictiveAnalytics() {
+    const { data } = await api.get("/purchases/predictive-analytics");
+    return data as PredictiveAnalytics;
   },
 
   async create(input: CreatePurchaseInput) {

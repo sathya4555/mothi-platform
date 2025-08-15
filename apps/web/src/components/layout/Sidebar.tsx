@@ -21,9 +21,14 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({
 const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isAdminOrCoord = user?.role === "admin" || user?.role === "coordinator";
+
   return (
     <aside className="w-56 border-r border-border p-4 space-y-2">
       <NavLink to="/dashboard">Dashboard</NavLink>
+      {isAdminOrCoord && (
+        <NavLink to="/executive-dashboard">Executive Dashboard</NavLink>
+      )}
       <NavLink to="/purchases">Purchases</NavLink>
       <NavLink to="/parties">Parties</NavLink>
       {isAdmin && <NavLink to="/products">Products</NavLink>}

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
-const PRESET_KEY = "purchases_filters_default";
 const COL_WIDTHS_KEY = "purchases_table_col_widths";
 
 function useSearchParamsState() {
@@ -100,25 +99,19 @@ const PurchasesListPage: React.FC = () => {
     } catch {}
   }, [page]);
 
-  // Load saved presets on first mount if no filters in URL
-  useEffect(() => {
-    const hasAny = !!(
-      status ||
-      partyName ||
-      dateFrom ||
-      dateTo ||
-      salesType ||
-      agentId
-    );
-    if (hasAny) return;
-    const saved = localStorage.getItem(PRESET_KEY);
-    if (!saved) return;
-    try {
-      const preset = JSON.parse(saved) as Record<string, string>;
-      setMany(preset);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Clear all filters
+  const clearAllFilters = () => {
+    setMany({
+      status: "",
+      partyName: "",
+      dateFrom: "",
+      dateTo: "",
+      salesType: "",
+      agentId: "",
+      sort: "desc",
+      page: "1",
+    });
+  };
 
   const { data, isLoading, isError } = useQuery<Paginated<PurchaseListItem>>({
     queryKey: [
@@ -267,22 +260,6 @@ const PurchasesListPage: React.FC = () => {
     } catch {}
   };
 
-  const savePreset = () => {
-    const preset = {
-      status,
-      partyName,
-      dateFrom,
-      dateTo,
-      sort,
-      salesType,
-      agentId,
-    };
-    localStorage.setItem(PRESET_KEY, JSON.stringify(preset));
-  };
-  const clearPreset = () => {
-    localStorage.removeItem(PRESET_KEY);
-  };
-
   return (
     <div className="min-h-screen">
       <div className="container py-6 space-y-6">
@@ -366,11 +343,8 @@ const PurchasesListPage: React.FC = () => {
                   onChange={(e) => set("agentId", e.target.value)}
                 />
               )}
-              <Button variant="outline" onClick={savePreset}>
-                Save Preset
-              </Button>
-              <Button variant="ghost" onClick={clearPreset}>
-                Clear Preset
+              <Button variant="ghost" onClick={clearAllFilters}>
+                Clear All
               </Button>
             </div>
           </div>
@@ -519,16 +493,21 @@ const PurchasesListPage: React.FC = () => {
                     />
                   )}
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setMobileFiltersOpen(false)}
-                  >
-                    Close
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  <Button variant="ghost" onClick={clearAllFilters}>
+                    Clear All
                   </Button>
-                  <Button onClick={() => setMobileFiltersOpen(false)}>
-                    Apply
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setMobileFiltersOpen(false)}
+                    >
+                      Close
+                    </Button>
+                    <Button onClick={() => setMobileFiltersOpen(false)}>
+                      Apply
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -125,5 +125,32 @@ export class PartiesService {
 
     return searchQuery.getMany();
   }
+
+  async findByAgent(
+    agentId: number,
+    search?: string,
+    userId?: number,
+    userRole?: string,
+  ): Promise<Party[]> {
+    let query = this.partyRepository
+      .createQueryBuilder('party')
+      .leftJoinAndSelect('party.creator', 'creator')
+      .where('party.createdBy = :agentId', { agentId })
+      .orderBy('party.createdAt', 'DESC');
+
+    // Add search filter if provided
+    if (search) {
+      query = query.andWhere(
+        '(party.name ILIKE :search OR party.gstNumber ILIKE :search OR party.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    // If the current user is an agent, they can only see their own parties
+    if (userRole === 'agent' && userId) {
+      query = query.andWhere('party.createdBy = :userId', { userId });
+    }
+
+    return query.getMany();
+  }
 }
- 

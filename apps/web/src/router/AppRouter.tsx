@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import LoginPage from "@/routes/LoginPage";
 import DashboardPage from "@/routes/DashboardPage";
+import ExecutiveDashboardPage from "@/routes/ExecutiveDashboardPage";
 import PurchasesListPage from "@/routes/PurchasesListPage";
 import PartiesPage from "@/routes/PartiesPage";
 import PurchaseDetailsPage from "@/routes/PurchaseDetailsPage";
@@ -28,6 +29,17 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+const ExecutiveRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="p-6">Loading...</div>;
+  if (user?.role !== "admin" && user?.role !== "coordinator") {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
 const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
@@ -40,6 +52,16 @@ const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <AppShell>
                 <DashboardPage />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/executive-dashboard"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <ExecutiveDashboardPage />
               </AppShell>
             </ProtectedRoute>
           }

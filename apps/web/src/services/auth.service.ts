@@ -107,6 +107,10 @@ export const authService = {
     const { data } = await api.delete(`/users/${id}`);
     return data;
   },
+  async adminGenerateResetLink(userId: number) {
+    const { data } = await api.post("/auth/reset-link", { userId });
+    return data as { setupToken: string };
+  },
 
   // Onboarding
   async fetchSetupInfo(token: string) {

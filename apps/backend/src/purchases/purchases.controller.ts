@@ -42,6 +42,24 @@ export class PurchasesController {
     return this.purchasesService.getDashboardStats(req.user.id, req.user.role);
   }
 
+  @Get('executive-analytics')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  getExecutiveAnalytics() {
+    return this.purchasesService.getExecutiveAnalytics();
+  }
+
+  @Get('agent-leaderboards')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  getAgentLeaderboards() {
+    return this.purchasesService.getAgentLeaderboards();
+  }
+
+  @Get('predictive-analytics')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  getPredictiveAnalytics() {
+    return this.purchasesService.getPredictiveAnalytics();
+  }
+
   @Get('overdue')
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.AGENT)
   getOverduePurchases(@Request() req) {

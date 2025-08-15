@@ -56,6 +56,10 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async setPassword(id: number, hashedPassword: string): Promise<void> {
+    await this.usersRepository.update(id, { password: hashedPassword });
+  }
+
   async removeUser(id: number): Promise<void> {
     const user = await this.findById(id);
     if (!user) return;
@@ -70,7 +74,11 @@ export class UsersService {
     await this.usersRepository.update(userId, { refreshToken: null });
   }
 
-  async validatePassword(password: string, hash: string): Promise<boolean> {
+  async validatePassword(
+    password: string,
+    hash: string | null,
+  ): Promise<boolean> {
+    if (!hash) return false;
     return bcrypt.compare(password, hash);
   }
 

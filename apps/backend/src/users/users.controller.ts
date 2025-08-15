@@ -21,7 +21,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
   async list(@Query('role') role?: string, @Query('search') search?: string) {
     return this.usersService.listUsers({ role: role as UserRole, search });
   }

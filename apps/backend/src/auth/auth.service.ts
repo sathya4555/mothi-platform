@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
@@ -187,10 +188,15 @@ export class AuthService {
       phone: payload.phone?.trim() || info.phone,
       isActive: true,
     });
-    // save password separately to avoid overwriting fields unintentionally
-    await (this as any).usersService['usersRepository'].update(info.id, {
-      password: hashedPassword,
-    });
+    await this.usersService.setPassword(info.id, hashedPassword);
     return { message: 'Password setup successful' };
+  }
+
+  async generateResetLink(userId: number): Promise<{ setupToken: string }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    // Optionally, we could invalidate previous setup tokens by rotating a server-side secret
+    const setupToken = await this.generateSetupToken(user.id);
+    return { setupToken };
   }
 }
