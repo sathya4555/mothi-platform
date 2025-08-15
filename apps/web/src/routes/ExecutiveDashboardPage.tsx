@@ -151,7 +151,7 @@ const UltraMinimalLeaderboardItem: React.FC<{
 const ExecutiveDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  // const [autoRefresh, setAutoRefresh] = useState(true);
 
   const {
     data: analytics,
@@ -161,7 +161,7 @@ const ExecutiveDashboardPage: React.FC = () => {
     queryKey: ["executiveAnalytics"],
     queryFn: () => purchaseService.executiveAnalytics(),
     enabled: user?.role === "admin" || user?.role === "coordinator",
-    refetchInterval: autoRefresh ? 30000 : false,
+    // refetchInterval: autoRefresh ? 30000 : false,
   });
 
   const { data: leaderboards, isLoading: leaderboardsLoading } =
@@ -169,7 +169,7 @@ const ExecutiveDashboardPage: React.FC = () => {
       queryKey: ["agentLeaderboards"],
       queryFn: () => purchaseService.agentLeaderboards(),
       enabled: user?.role === "admin" || user?.role === "coordinator",
-      refetchInterval: autoRefresh ? 30000 : false,
+      // refetchInterval: autoRefresh ? 30000 : false,
     });
 
   const { data: predictive, isLoading: predictiveLoading } =
@@ -177,7 +177,7 @@ const ExecutiveDashboardPage: React.FC = () => {
       queryKey: ["predictiveAnalytics"],
       queryFn: () => purchaseService.predictiveAnalytics(),
       enabled: user?.role === "admin" || user?.role === "coordinator",
-      refetchInterval: autoRefresh ? 30000 : false,
+      // refetchInterval: autoRefresh ? 30000 : false,
     });
 
   // Debug logging
@@ -289,7 +289,7 @@ const ExecutiveDashboardPage: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
+                {/* <Button
                   variant={autoRefresh ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAutoRefresh(!autoRefresh)}
@@ -304,7 +304,7 @@ const ExecutiveDashboardPage: React.FC = () => {
                   <span className="sm:hidden">
                     {autoRefresh ? "ON" : "OFF"}
                   </span>
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"

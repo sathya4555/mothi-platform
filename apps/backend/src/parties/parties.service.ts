@@ -154,3 +154,4 @@ export class PartiesService {
     return query.getMany();
   }
 }
+ 

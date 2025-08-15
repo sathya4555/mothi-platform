@@ -142,13 +142,13 @@ const PurchasesListPage: React.FC = () => {
       }),
   });
 
-  const isOverdue = (invoiceDate?: string) => {
-    if (!invoiceDate) return false;
-    const d = new Date(invoiceDate);
-    const diff = Date.now() - d.getTime();
-    const days = diff / (1000 * 60 * 60 * 24);
-    return days >= 7;
-  };
+  // const isOverdue = (invoiceDate?: string) => {
+  //   if (!invoiceDate) return false;
+  //   const d = new Date(invoiceDate);
+  //   const diff = Date.now() - d.getTime();
+  //   const days = diff / (1000 * 60 * 60 * 24);
+  //   return days >= 7;
+  // };
 
   // CSV Export
   const exportCSV = () => {
@@ -377,10 +377,10 @@ const PurchasesListPage: React.FC = () => {
           </div>
 
           {/* Legend (mobile) */}
-          <div className="-mx-4 px-4 flex items-center gap-2 text-xs text-muted-foreground">
+          {/* <div className="-mx-4 px-4 flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-block h-2.5 w-2.5 rounded bg-red-400" />
             <span>Overdue (&gt;7 days since invoice date)</span>
-          </div>
+          </div> */}
 
           {isLoading && (
             <div className="rounded-xl border border-border p-4">
@@ -396,7 +396,7 @@ const PurchasesListPage: React.FC = () => {
             ? data.items.map((p) => (
                 <div
                   key={p.id}
-                  className={`rounded-2xl border p-4 shadow-sm ${isOverdue(p.invoiceDate) ? "border-red-400" : "border-border"}`}
+                  className={`rounded-2xl border p-4 shadow-sm border-border`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-semibold tracking-tight max-w-[70%]">
@@ -517,10 +517,10 @@ const PurchasesListPage: React.FC = () => {
         {/* Desktop table with sticky header and resizable columns */}
         <div className="hidden md:block overflow-auto rounded-2xl border border-border bg-card/60">
           {/* Legend (desktop) */}
-          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur px-5 py-2 border-b border-border flex items-center gap-2 text-xs text-muted-foreground">
+          {/* <div className="sticky top-0 z-10 bg-background/80 backdrop-blur px-5 py-2 border-b border-border flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-block h-2.5 w-2.5 rounded bg-red-400" />
             <span>Overdue (&gt;7 days since invoice date)</span>
-          </div>
+          </div> */}
           <table className="w-full text-sm table-fixed">
             <thead className="sticky top-0 z-10 bg-background/80 backdrop-blur">
               <tr className="text-muted-foreground">
@@ -566,7 +566,7 @@ const PurchasesListPage: React.FC = () => {
                 ? data.items.map((p, i) => (
                     <tr
                       key={p.id}
-                      className={`${i % 2 === 0 ? "bg-background/30" : "bg-transparent"} ${isOverdue(p.invoiceDate) ? "bg-red-50 dark:bg-red-900/30" : ""}`}
+                      className={`${i % 2 === 0 ? "bg-background/30" : "bg-transparent"}`}
                     >
                       <td
                         className="px-5 py-3"
