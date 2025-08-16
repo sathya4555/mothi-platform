@@ -14,9 +14,18 @@ async function bootstrap() {
     }),
   );
 
-  // Enable CORS for frontend - More permissive for development
+  // Enable CORS for frontend
   app.enableCors({
-    origin: true, // Allow all origins in development
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:4173', // Vite preview
+      'https://mothi-platform.railway.app',
+      'https://mothi-platform-production.up.railway.app',
+      'https://mothi-platform-web.railway.app',
+      process.env.FRONTEND_URL, // Allow environment variable override
+    ].filter(Boolean),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [

@@ -1,8 +1,8 @@
 import axios from "axios";
+import { API_CONFIG } from "@/config/api";
 
 const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string) ||
-  "https://mothi-platform.railway.app";
+  (import.meta.env.VITE_API_BASE_URL as string) || API_CONFIG.BASE_URL;
 
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
@@ -15,8 +15,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-  if (token) {
-    config.headers = config.headers ?? {};
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -38,8 +37,9 @@ api.interceptors.response.use(
           if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
           if (newRefreshToken)
             localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-          original.headers = original.headers ?? {};
-          original.headers.Authorization = `Bearer ${accessToken}`;
+          if (original.headers) {
+            original.headers.Authorization = `Bearer ${accessToken}`;
+          }
           return api(original);
         } catch (_) {
           // fall through to logout/redirect below

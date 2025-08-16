@@ -1,17 +1,51 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// For development using localhost
-export const API_BASE_URL = "https://mothi-platform.railway.app";
+// API Configuration for Mobile App
+export const API_CONFIG = {
+  // Backend URL - Railway production
+  BASE_URL: "https://mothi-platform-production.up.railway.app",
 
-// For testing on physical device or other machines in the network
-// export const API_BASE_URL = 'http://YOUR_MACHINE_IP:3000';
+  // API endpoints
+  ENDPOINTS: {
+    AUTH: {
+      LOGIN: "/auth/login",
+      REGISTER: "/auth/register",
+      PROFILE: "/auth/profile",
+    },
+    USERS: "/users",
+    PARTIES: "/parties",
+    PRODUCTS: "/products",
+    SUBcategories: "/products/subcategories",
+    PURCHASES: "/purchases",
+  },
 
-// For production
-// export const API_BASE_URL = 'https://api.yourproduction.com';
+  // Headers
+  DEFAULT_HEADERS: {
+    "Content-Type": "application/json",
+  },
+} as const;
+
+// Helper function to get full API URL
+export const getApiUrl = (endpoint: string): string => {
+  return `${API_CONFIG.BASE_URL}${endpoint}`;
+};
+
+// Helper function to get auth headers
+export const getAuthHeaders = (token?: string) => {
+  const headers: Record<string, string> = {
+    ...API_CONFIG.DEFAULT_HEADERS,
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
 
 // Configure axios defaults
-axios.defaults.baseURL = API_BASE_URL;
+axios.defaults.baseURL = API_CONFIG.BASE_URL;
 
 // Request interceptor to add auth token
 axios.interceptors.request.use(
