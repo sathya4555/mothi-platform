@@ -23,8 +23,9 @@ async function bootstrap() {
       'http://localhost:5173', // Vite dev server
       'http://localhost:4173', // Vite preview
       'https://mothi-platform.railway.app',
-      'https://mothi-platform-production.up.railway.app',
-      'https://mothi-platform-web.railway.app',
+      'https://mothi-platform-production.up.railway.app', // Production backend
+      'https://mothi-platform-web.railway.app', // Production frontend (Railway)
+      'https://mothi-platform-web.vercel.app', // Production frontend (Vercel)
       process.env.FRONTEND_URL, // Allow environment variable override
     ].filter(Boolean),
     credentials: true,
