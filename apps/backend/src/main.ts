@@ -19,6 +19,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:8081', // Your frontend URL
       'http://localhost:5173', // Vite dev server
       'http://localhost:4173', // Vite preview
       'https://mothi-platform.railway.app',
