@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+:root {
+    /* Light theme - refined neutrals and premium accent */
+    /* Off-white background */
+    --background: 40 20% 98%;
+    --foreground: 222 47% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 12%;
+
+    /* Primary: eucalyptus/evergreen blend */
+    --primary: 152 28% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Subtle cool gray for secondary surfaces */
+    --secondary: 213 16% 92%;
+    --secondary-foreground: 222 47% 18%;
+
+    /* Muted/accent for soft layers */
+    --muted: 210 22% 95%;
+    --muted-foreground: 222 14% 38%;
+
+    --accent: 210 30% 97%;
+    --accent-foreground: 222 47% 18%;
+
+    /* Destructive */
+    --destructive: 3 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders, inputs, focus ring */
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 152 45% 42%;
+  }
+
+  .dark {
+    /* Dark theme - deep slate with crisp foregrounds */
+    --background: 222 22% 7%;
+    --foreground: 210 20% 90%;
+
+    --card: 222 24% 9%;
+    --card-foreground: 210 20% 90%;
+
+    --popover: 222 24% 9%;
+    --popover-foreground: 210 20% 90%;
+
+    /* Primary */
+    --primary: 152 28% 46%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 16% 16%;
+    --secondary-foreground: 210 22% 88%;
+
+    --muted: 222 16% 14%;
+    --muted-foreground: 210 12% 66%;
+
+    --accent: 222 16% 18%;
+    --accent-foreground: 210 22% 90%;
+
+    --destructive: 3 84% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 16% 22%;
+    --input: 222 16% 22%;
+    --ring: 152 46% 44%;
+}
+
+body {
+    @apply bg-background text-foreground;
+    font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+}
+
+@layer utilities {
+  .bg-background { background-color: hsl(var(--background)); }
+  .text-foreground { color: hsl(var(--foreground)); }
+  .bg-card { background-color: hsl(var(--card)); }
+  .text-card-foreground { color: hsl(var(--card-foreground)); }
+  .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+  .border-border { border-color: hsl(var(--border)); }
+  .bg-accent { background-color: hsl(var(--accent)); }
+  .text-accent-foreground { color: hsl(var(--accent-foreground)); }
+  .ring-ring { --tw-ring-color: hsl(var(--ring)); }
+}

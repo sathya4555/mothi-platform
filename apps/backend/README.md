@@ -26,11 +26,79 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+# Mothi Platform Backend
+
+A NestJS backend for the Mothi Platform, providing APIs for purchase management, party management, and product catalog.
+
+## Database Setup
+
+This application uses **Neon PostgreSQL** as the database. The connection is configured to use the following connection string:
+
+```
+postgresql://neondb_owner:npg_baGg0CBD9qJQ@ep-misty-bird-a1uftcid-pooler.ap-southeast-1.aws.neon.tech/mothi-dev?sslmode=require&channel_binding=require
+```
+
+### Environment Variables
+
+Create a `.env` file in the `apps/backend` directory with the following variables:
+
+```env
+# Database Configuration
+DATABASE_URL=postgresql://neondb_owner:npg_baGg0CBD9qJQ@ep-misty-bird-a1uftcid-pooler.ap-southeast-1.aws.neon.tech/mothi-dev?sslmode=require&channel_binding=require
+
+# Environment
+NODE_ENV=development
+
+# TypeORM Logging (optional)
+TYPEORM_LOGGING=true
+
+# JWT Secret (change this in production)
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Port
+PORT=3001
+```
+
 ## Installation
 
 ```bash
 $ npm install
 ```
+
+## Database Seeding
+
+To populate the database with initial data:
+
+```bash
+# Basic seed - users only
+$ npm run seed
+
+# Comprehensive seed - all entities with realistic data
+$ npm run seed:comprehensive
+
+# Individual seed files (optional)
+$ npx ts-node seed-purchases.ts
+```
+
+### Default Users
+
+After comprehensive seeding, the following test users will be available:
+
+- **Admin**: `rajesh.kumar@mothi.com` / `password123`
+- **Coordinator**: `priya.sharma@mothi.com` / `password123`
+- **Agent**: `amit.patel@mothi.com` / `password123`
+- **Agent**: `sneha.reddy@mothi.com` / `password123`
+- **Agent**: `vikram.singh@mothi.com` / `password123`
+
+### Data Generated
+
+The comprehensive seed creates:
+- **5 Users** (1 Admin, 1 Coordinator, 3 Agents)
+- **25 Parties** (realistic business names with GST numbers)
+- **24 Products** (8 per category: Small, Big, King)
+- **60+ Subcategories** (2-4 per product with realistic pricing)
+- **50 Purchases** (with realistic dates, amounts, and statuses)
+- **150+ Purchase Items** (realistic quantities and pricing)
 
 ## Running the app
 
@@ -58,16 +126,20 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## API Endpoints
+
+The application provides the following main API endpoints:
+
+- **Auth**: `/auth/login` - User authentication
+- **Users**: `/users` - User management
+- **Parties**: `/parties` - Party/customer management
+- **Products**: `/products` - Product catalog management
+- **Purchases**: `/purchases` - Purchase order management
+
 ## Support
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+This is a custom application built with NestJS framework.
 
 ## License
 
-Nest is [MIT licensed](LICENSE).
+This project is proprietary and confidential.

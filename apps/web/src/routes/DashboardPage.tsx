@@ -1,0 +1,649 @@
+import React, { useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { purchaseService } from "@/services/purchase.service";
+import { Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const Tile: React.FC<{
+  title: string;
+  value: string | number;
+  to?: string;
+  info?: string;
+}> = ({ title, value, to, info }) => {
+  const content = (
+    <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 shadow-sm hover:shadow transition-shadow relative">
+      {info && (
+        <div className="absolute top-2 right-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p>{info}</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+      <div className="text-sm text-muted-foreground">{title}</div>
+      <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+    </div>
+  );
+  return to ? <Link to={to}>{content}</Link> : content;
+};
+
+const Skeleton: React.FC<{ className?: string }> = ({ className }) => (
+  <div
+    className={`animate-pulse rounded-md bg-muted/40 ${className || "h-6"}`}
+  />
+);
+
+const ProgressCircle: React.FC<{ percent: number }> = ({ percent }) => {
+  const r = 48;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(100, percent));
+  const offset = c - (clamped / 100) * c;
+  return (
+    <svg
+      width={140}
+      height={140}
+      viewBox="0 0 140 140"
+      className="drop-shadow-sm"
+    >
+      <defs>
+        <linearGradient id="pg" x1="0" x2="1">
+          <stop offset="0%" stopColor="hsl(var(--primary))" />
+          <stop offset="100%" stopColor="#22c55e" />
+        </linearGradient>
+      </defs>
+      <circle
+        cx="70"
+        cy="70"
+        r={r}
+        stroke="#e5e7eb"
+        strokeWidth="12"
+        fill="none"
+      />
+      <circle
+        cx="70"
+        cy="70"
+        r={r}
+        stroke="url(#pg)"
+        strokeWidth="12"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform="rotate(-90 70 70)"
+      />
+      <text
+        x="50%"
+        y="50%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        className="fill-foreground text-2xl font-semibold"
+      >
+        {Math.round(clamped)}%
+      </text>
+    </svg>
+  );
+};
+
+const MiniBars: React.FC<{ values: number[] }> = ({ values }) => {
+  const max = Math.max(1, ...values);
+  return (
+    <div className="flex items-end gap-2 h-20">
+      {values.map((v, i) => (
+        <div
+          key={i}
+          className="w-3 rounded bg-emerald-400/90 dark:bg-emerald-300/90"
+          style={{ height: `${(v / max) * 100}%` }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const MiniArea: React.FC<{ points: number[] }> = ({ points }) => {
+  const w = 260;
+  const h = 100;
+  const max = Math.max(1, ...points);
+  const step = w / Math.max(1, points.length - 1);
+  const line = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${i * step},${h - (p / max) * h}`)
+    .join(" ");
+  const area = `${line} L ${w},${h} L 0,${h} Z`;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="w-full">
+      <defs>
+        <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0%"
+            stopColor="hsl(var(--primary))"
+            stopOpacity="0.35"
+          />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#ag)" />
+      <path d={line} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} />
+    </svg>
+  );
+};
+
+const DashboardPage: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isAgent = user?.role === "agent";
+  const isAdminOrCoord = user?.role === "admin" || user?.role === "coordinator";
+  const [period] = useState("Monthly");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const shortId = (id: string) =>
+    id?.length > 16 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id;
+  const copyToClipboard = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedId(value);
+      setTimeout(() => setCopiedId(null), 1200);
+    } catch {}
+  };
+
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["purchases", "stats"],
+    queryFn: () => purchaseService.stats(),
+  });
+
+  const byType = useMemo(() => {
+    const map: Record<string, { count: number; amount: number }> = {
+      small: { count: 0, amount: 0 },
+      big: { count: 0, amount: 0 },
+      king: { count: 0, amount: 0 },
+    };
+    stats?.sales.byType.forEach((t: any) => {
+      map[t.type] = { count: t.count, amount: t.amount };
+    });
+    return map;
+  }, [stats]);
+
+  const totalOrders =
+    (stats?.summary.confirmationPending ?? 0) +
+    (stats?.summary.processing ?? 0) +
+    (stats?.summary.pendingPayment ?? 0) +
+    (stats?.summary.completed ?? 0);
+  const completedPct = totalOrders
+    ? ((stats?.summary.completed ?? 0) / totalOrders) * 100
+    : 0;
+
+  // Build simple weekly series from recent activity amounts
+  const weeklySeries = useMemo(() => {
+    const arr = new Array(7).fill(0);
+    (stats?.recentActivity || []).forEach((r: any) => {
+      const d = new Date(r.date);
+      const day = d.getDay(); // 0..6
+      arr[day] += Number(r.amount) || 0;
+    });
+    return arr;
+  }, [stats]);
+
+  const weeklyOrderSeries = useMemo(() => {
+    const arr = new Array(7).fill(0);
+    (stats?.recentActivity || []).forEach((r: any) => {
+      const d = new Date(r.date);
+      const day = d.getDay();
+      arr[day] += 1;
+    });
+    return arr;
+  }, [stats]);
+
+  // Comparison (this 7 days vs previous 7 days)
+  const comparison = useMemo(() => {
+    const MS_DAY = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const startCurrent = now - 7 * MS_DAY;
+    const startPrev = now - 14 * MS_DAY;
+
+    let revCurr = 0,
+      revPrev = 0,
+      cntCurr = 0,
+      cntPrev = 0;
+
+    (stats?.recentActivity || []).forEach((r: any) => {
+      const t = new Date(r.date).getTime();
+      if (t >= startCurrent && t <= now) {
+        revCurr += Number(r.amount) || 0;
+        cntCurr += 1;
+      } else if (t >= startPrev && t < startCurrent) {
+        revPrev += Number(r.amount) || 0;
+        cntPrev += 1;
+      }
+    });
+
+    const revDelta = revPrev ? ((revCurr - revPrev) / revPrev) * 100 : 100;
+    const cntDelta = cntPrev ? ((cntCurr - cntPrev) / cntPrev) * 100 : 100;
+
+    return { revCurr, revPrev, cntCurr, cntPrev, revDelta, cntDelta };
+  }, [stats]);
+
+  return (
+    <TooltipProvider>
+      <div className="min-h-screen">
+        <div className="container py-4 sm:py-6 space-y-4 sm:space-y-6 px-4 sm:px-6">
+          {/* Header */}
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                My Summary
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Welcome back{user?.email ? `, ${user.email}` : ""}. Track your
+                performance at a glance.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAdminOrCoord && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/executive-dashboard">Executive View</Link>
+                </Button>
+              )}
+              {isAgent ? (
+                <Button size="sm" onClick={() => navigate("/purchases/new")}>
+                  Place Order
+                </Button>
+              ) : (
+                <Button size="sm" asChild>
+                  <Link to="/purchases">Manage Purchases</Link>
+                </Button>
+              )}
+            </div>
+          </header>
+
+          {/* Quick metrics */}
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+              </>
+            ) : (
+              <>
+                <Tile
+                  title="Total Purchases"
+                  value={stats?.summary.totalPurchases ?? 0}
+                  info="Total number of orders created in the system. Includes all orders regardless of their current status."
+                />
+                <Tile
+                  title="Avg Order Value"
+                  value={`₹ ${(stats?.sales.averageOrderValue ?? 0).toFixed(2)}`}
+                  info="Average amount per order calculated by dividing total revenue by total number of orders."
+                />
+                <Tile
+                  title="Unique Parties"
+                  value={stats?.parties.uniqueCount ?? 0}
+                  info="Number of unique customers/parties who have placed orders. Shows the total customer base size."
+                />
+              </>
+            )}
+          </div>
+
+          {/* Top grid: Comparison + Goals */}
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 xl:grid-cols-3">
+            <div className="xl:col-span-2 rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-base font-semibold">Comparison</div>
+                <div className="text-sm text-muted-foreground">{period}</div>
+              </div>
+              {isLoading ? (
+                <div className="mt-4 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+                  <Skeleton className="h-28" />
+                  <Skeleton className="h-28" />
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+                    <div className="space-y-3">
+                      <div className="text-sm text-muted-foreground">
+                        Revenue (7d)
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <div className="text-xl sm:text-2xl font-semibold">
+                          ₹ {comparison.revCurr.toFixed(2)}
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${comparison.revDelta >= 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"}`}
+                        >
+                          {comparison.revDelta >= 0 ? (
+                            <svg
+                              className="mr-1 h-3 w-3"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M12 19V5M5 12l7-7 7 7" />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="mr-1 h-3 w-3"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M12 5v14M19 12l-7 7-7-7" />
+                            </svg>
+                          )}
+                          {Math.abs(comparison.revDelta).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="hidden sm:block">
+                        <MiniArea points={weeklySeries} />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Prev 7d: ₹ {comparison.revPrev.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="text-sm text-muted-foreground">
+                        Orders (7d)
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <div className="text-xl sm:text-2xl font-semibold">
+                          {comparison.cntCurr}
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${comparison.cntDelta >= 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"}`}
+                        >
+                          {comparison.cntDelta >= 0 ? (
+                            <svg
+                              className="mr-1 h-3 w-3"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M12 19V5M5 12l7-7 7 7" />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="mr-1 h-3 w-3"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M12 5v14M19 12l-7 7-7-7" />
+                            </svg>
+                          )}
+                          {Math.abs(comparison.cntDelta).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="hidden sm:block">
+                        <MiniArea points={weeklyOrderSeries} />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Prev 7d: {comparison.cntPrev}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 sm:mt-5">
+                    <Button variant="secondary" size="sm" asChild>
+                      <Link to="/purchases">See details</Link>
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 sm:p-5">
+              <div className="text-base font-semibold">Goals Performance</div>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+                {isLoading ? (
+                  <Skeleton className="h-[140px] w-[140px] rounded-full mx-auto sm:mx-0" />
+                ) : (
+                  <div className="mx-auto sm:mx-0">
+                    <ProgressCircle percent={completedPct} />
+                  </div>
+                )}
+                <div className="space-y-3 flex-1">
+                  <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                    This period
+                    <div className="text-lg font-semibold">
+                      ₹ {(stats?.sales.totalValue ?? 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                    Completed
+                    <div className="text-lg font-semibold">
+                      {stats?.summary.completed ?? 0} orders
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  size="sm"
+                  asChild
+                >
+                  <Link to="/purchases?status=completed">View Full Report</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Middle grid: Sales report, By type, Insights */}
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-base font-semibold">Sales report</div>
+                <Link
+                  to="/purchases"
+                  className="text-sm text-muted-foreground hover:underline"
+                >
+                  View all
+                </Link>
+              </div>
+              <div className="mt-4">
+                {isLoading ? (
+                  <Skeleton className="h-28" />
+                ) : (
+                  <div className="hidden sm:block">
+                    <MiniArea points={weeklySeries} />
+                  </div>
+                )}
+                <div className="mt-2 flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+                  <div>Sun</div>
+                  <div>Mon</div>
+                  <div>Tue</div>
+                  <div>Wed</div>
+                  <div>Thu</div>
+                  <div>Fri</div>
+                  <div>Sat</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 sm:p-5 space-y-3">
+              <div className="text-base font-semibold">Most Impressions</div>
+              <div className="rounded-xl border border-border bg-background p-3 text-sm flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Small
+                </div>
+                <div className="text-muted-foreground">
+                  {byType.small.count} (
+                  {totalOrders
+                    ? Math.round((byType.small.count / totalOrders) * 100)
+                    : 0}
+                  %)
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-3 text-sm flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" /> Big
+                </div>
+                <div className="text-muted-foreground">
+                  {byType.big.count} (
+                  {totalOrders
+                    ? Math.round((byType.big.count / totalOrders) * 100)
+                    : 0}
+                  %)
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-3 text-sm flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-violet-500" /> King
+                </div>
+                <div className="text-muted-foreground">
+                  {byType.king.count} (
+                  {totalOrders
+                    ? Math.round((byType.king.count / totalOrders) * 100)
+                    : 0}
+                  %)
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-gradient-to-b from-card/70 to-card/40 p-4 sm:p-5 space-y-3">
+              <div className="text-base font-semibold">Status Overview</div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <Link
+                  to="/purchases?status=confirmation_pending"
+                  className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+                >
+                  Pending
+                  <div className="text-lg font-semibold">
+                    {stats?.summary.confirmationPending ?? 0}
+                  </div>
+                </Link>
+                <Link
+                  to="/purchases?status=processing"
+                  className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+                >
+                  Processing
+                  <div className="text-lg font-semibold">
+                    {stats?.summary.processing ?? 0}
+                  </div>
+                </Link>
+                <Link
+                  to="/purchases?status=payment_pending"
+                  className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+                >
+                  Payment
+                  <div className="text-lg font-semibold">
+                    {stats?.summary.pendingPayment ?? 0}
+                  </div>
+                </Link>
+                <Link
+                  to="/purchases?status=completed"
+                  className="rounded-xl border border-border bg-background p-3 hover:bg-accent hover:text-accent-foreground transition block"
+                >
+                  Completed
+                  <div className="text-lg font-semibold">
+                    {stats?.summary.completed ?? 0}
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Recent Activity</h2>
+              {isAdminOrCoord && (
+                <Link
+                  to="/purchases"
+                  className="text-sm text-muted-foreground hover:underline"
+                >
+                  Go to purchases
+                </Link>
+              )}
+            </div>
+            <div className="grid gap-3">
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-16" />
+                  <Skeleton className="h-16" />
+                  <Skeleton className="h-16" />
+                </>
+              ) : stats?.recentActivity?.length ? (
+                stats.recentActivity.map((r: any) => (
+                  <Link
+                    key={r.id}
+                    to={`/purchases/${r.id}`}
+                    className="rounded-xl border border-border bg-card/60 p-4 flex items-center justify-between hover:bg-accent hover:text-accent-foreground transition"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          title="Copy ID"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            copyToClipboard(r.uniqueId);
+                          }}
+                          className="font-mono text-xs sm:text-sm hover:underline truncate max-w-[120px] sm:max-w-[200px] text-left"
+                        >
+                          {shortId(r.uniqueId)}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Copy"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            copyToClipboard(r.uniqueId);
+                          }}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded border border-border hover:bg-background/50 flex-shrink-0"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            className="h-3.5 w-3.5"
+                          >
+                            <rect x="9" y="9" width="10" height="10" rx="2" />
+                            <path d="M5 15V7a2 2 0 0 1 2-2h8" />
+                          </svg>
+                        </button>
+                        {copiedId === r.uniqueId && (
+                          <span className="text-xs text-muted-foreground">
+                            Copied
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        {r.partyName}
+                      </div>
+                      <div className="text-xs sm:text-sm text-muted-foreground capitalize">
+                        {r.status.replace("_", " ")} •{" "}
+                        {new Date(r.date).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="text-sm whitespace-nowrap ml-2">
+                      ₹ {Number(r.amount).toFixed(2)}
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div className="text-muted-foreground">No recent activity</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
+};
+
+export default DashboardPage;

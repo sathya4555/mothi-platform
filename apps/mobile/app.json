@@ -29,6 +29,7 @@
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro"
     },
-    "scheme": "mothi-platform"
+    "scheme": "mothi-platform",
+    "entryPoint": "./index.js"
   }
 }

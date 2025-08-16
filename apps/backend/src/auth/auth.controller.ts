@@ -13,8 +13,22 @@ import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { UserRole } from '../entities/user.entity';
 
+import {
+  IsEmail,
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsInt,
+} from 'class-validator';
+
 export class LoginDto {
+  @IsEmail()
+  @IsNotEmpty()
   email: string;
+
+  @IsString()
+  @IsNotEmpty()
   password: string;
 }
 
@@ -23,16 +37,44 @@ export class RefreshTokenDto {
 }
 
 export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
   name: string;
+
+  @IsEmail()
+  @IsNotEmpty()
   email: string;
+
+  @IsString()
+  @IsNotEmpty()
   phone: string;
+
+  @IsEnum(UserRole)
+  @IsNotEmpty()
   role: string;
-  password?: string;
 }
 
 export class SetupPasswordDto {
+  @IsString()
+  @IsNotEmpty()
   token: string;
+
+  @IsString()
+  @IsNotEmpty()
   password: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+}
+
+export class ResetLinkDto {
+  @IsInt()
+  userId: number;
 }
 
 @Controller('auth')
@@ -83,20 +125,31 @@ export class AuthController {
       message: 'User created successfully',
       user: result.user,
       setupToken: result.setupToken,
-      // Only include tempPassword in development
-      ...(process.env.NODE_ENV !== 'production' && {
-        tempPassword: result.tempPassword,
-      }),
     };
+  }
+
+  @Post('reset-link')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async resetLink(@Body() dto: ResetLinkDto) {
+    return this.authService.generateResetLink(dto.userId);
   }
 
   @Post('setup-password')
   @HttpCode(HttpStatus.OK)
   async setupPassword(@Body() setupPasswordDto: SetupPasswordDto) {
-    // This endpoint would handle the one-time password setup
-    // Implementation would verify the setup token and update the user's password
-    return {
-      message: 'Password setup successful',
-    };
+    return this.authService.setupPassword({
+      token: setupPasswordDto.token,
+      name: setupPasswordDto.name as any,
+      phone: setupPasswordDto.phone as any,
+      password: setupPasswordDto.password,
+    });
+  }
+
+  @Post('setup-info')
+  @HttpCode(HttpStatus.OK)
+  async setupInfo(@Body() body: { token: string }) {
+    return this.authService.getSetupInfo(body.token);
   }
 }

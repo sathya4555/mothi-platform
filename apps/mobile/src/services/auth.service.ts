@@ -1,15 +1,17 @@
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios, { AxiosInstance } from "axios";
+import { storage } from "./storage";
 import { Platform } from "react-native";
 
 // API Configuration - Use localhost for web development
 const API_BASE_URL =
-  Platform.OS === "web" ? "http://localhost:3000" : "http://localhost:3000"; // Change to your backend URL
+  Platform.OS === "web"
+    ? "https://mothi-platform.railway.app"
+    : "https://mothi-platform.railway.app"; // Change to your backend URL
 
 // Token storage keys
-const ACCESS_TOKEN_KEY = "access_token";
-const REFRESH_TOKEN_KEY = "refresh_token";
-const USER_DATA_KEY = "user_data";
+export const ACCESS_TOKEN_KEY = "access_token";
+export const REFRESH_TOKEN_KEY = "refresh_token";
+export const USER_DATA_KEY = "user_data";
 
 // Authentication interfaces
 export interface LoginCredentials {
@@ -41,7 +43,7 @@ export interface AuthState {
 
 // Authentication service class
 class AuthService {
-  private api: any;
+  public api: AxiosInstance;
 
   constructor() {
     // Create axios instance
@@ -56,7 +58,7 @@ class AuthService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       async (config: any) => {
-        const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+        const token = await storage.getItem(ACCESS_TOKEN_KEY);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -77,7 +79,7 @@ class AuthService {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+            const refreshToken = await storage.getItem(REFRESH_TOKEN_KEY);
             if (refreshToken) {
               const response = await axios.post(
                 `${API_BASE_URL}/auth/refresh`,
@@ -89,8 +91,8 @@ class AuthService {
               const { accessToken, refreshToken: newRefreshToken } =
                 response.data;
 
-              await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-              await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+              await storage.setItem(ACCESS_TOKEN_KEY, accessToken);
+              await storage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
 
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
               return this.api(originalRequest);
@@ -110,16 +112,11 @@ class AuthService {
   // Login user
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await this.api.post<AuthResponse>(
-        "/auth/login",
-        credentials
-      );
-
+      const response = await this.api.post("/auth/login", credentials);
       // Store tokens
-      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
-
-      return response.data;
+      await storage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
+      await storage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+      return response.data as AuthResponse;
     } catch (error: any) {
       console.error("Login error:", error);
       throw new Error(error.response?.data?.message || "Login failed");
@@ -136,7 +133,7 @@ class AuthService {
       console.log("Logout API call failed, continuing with local logout");
     } finally {
       // Clear local storage
-      await AsyncStorage.multiRemove([
+      await storage.multiRemove([
         ACCESS_TOKEN_KEY,
         REFRESH_TOKEN_KEY,
         USER_DATA_KEY,
@@ -150,8 +147,8 @@ class AuthService {
     refreshToken: string | null;
   }> {
     const [accessToken, refreshToken] = await Promise.all([
-      AsyncStorage.getItem(ACCESS_TOKEN_KEY),
-      AsyncStorage.getItem(REFRESH_TOKEN_KEY),
+      storage.getItem(ACCESS_TOKEN_KEY),
+      storage.getItem(REFRESH_TOKEN_KEY),
     ]);
 
     return { accessToken, refreshToken };
@@ -166,7 +163,7 @@ class AuthService {
   // Get current user data
   async getCurrentUser(): Promise<User | null> {
     try {
-      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+      const userData = await storage.getItem(USER_DATA_KEY);
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
       return null;
@@ -175,12 +172,12 @@ class AuthService {
 
   // Store user data
   async storeUserData(user: User): Promise<void> {
-    await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+    await storage.setItem(USER_DATA_KEY, JSON.stringify(user));
   }
 
   // Clear user data
   async clearUserData(): Promise<void> {
-    await AsyncStorage.removeItem(USER_DATA_KEY);
+    await storage.removeItem(USER_DATA_KEY);
   }
 
   // Health check

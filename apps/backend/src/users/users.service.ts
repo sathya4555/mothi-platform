@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
@@ -15,6 +15,14 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
+  async findByEmailInsensitive(email: string): Promise<User | undefined> {
+    const e = (email || '').trim().toLowerCase();
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: e })
+      .getOne();
+  }
+
   async findById(id: number): Promise<User | undefined> {
     return this.usersRepository.findOne({ where: { id } });
   }
@@ -23,12 +31,12 @@ export class UsersService {
     name: string;
     email: string;
     phone: string;
-    password: string;
+    password: string | null;
     role: string;
   }): Promise<User> {
     const user = this.usersRepository.create({
       name: userData.name,
-      email: userData.email,
+      email: (userData.email || '').trim().toLowerCase(),
       phone: userData.phone,
       password: userData.password,
       role: userData.role as UserRole,
@@ -36,6 +44,26 @@ export class UsersService {
     });
 
     return this.usersRepository.save(user);
+  }
+
+  async updateUser(
+    id: number,
+    updates: Partial<Pick<User, 'role' | 'isActive' | 'name' | 'phone'>>,
+  ): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) throw new Error('User not found');
+    Object.assign(user, updates);
+    return this.usersRepository.save(user);
+  }
+
+  async setPassword(id: number, hashedPassword: string): Promise<void> {
+    await this.usersRepository.update(id, { password: hashedPassword });
+  }
+
+  async removeUser(id: number): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) return;
+    await this.usersRepository.remove(user);
   }
 
   async saveRefreshToken(userId: number, refreshToken: string): Promise<void> {
@@ -46,7 +74,28 @@ export class UsersService {
     await this.usersRepository.update(userId, { refreshToken: null });
   }
 
-  async validatePassword(password: string, hash: string): Promise<boolean> {
+  async validatePassword(
+    password: string,
+    hash: string | null,
+  ): Promise<boolean> {
+    if (!hash) return false;
     return bcrypt.compare(password, hash);
+  }
+
+  async listUsers(params: { role?: UserRole; search?: string }) {
+    const where: any = {};
+    if (params.role) {
+      where.role = params.role;
+    }
+    if (params.search) {
+      where.name = ILike(`%${params.search}%`);
+    }
+    const users = await this.usersRepository.find({
+      where,
+      select: ['id', 'name', 'email', 'role', 'isActive'],
+      order: { name: 'ASC' },
+      take: 100,
+    });
+    return users;
   }
 }

@@ -14,6 +14,9 @@ import {
 } from './entities';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { PartiesModule } from './parties/parties.module';
+import { ProductsModule } from './products/products.module';
+import { PurchasesModule } from './purchases/purchases.module';
 
 @Module({
   imports: [
@@ -22,11 +25,9 @@ import { UsersModule } from './users/users.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.TYPEORM_HOST || 'localhost',
-      port: parseInt(process.env.TYPEORM_PORT) || 5432,
-      username: process.env.TYPEORM_USERNAME || 'postgres',
-      password: process.env.TYPEORM_PASSWORD || 'postgres',
-      database: process.env.TYPEORM_DATABASE || 'mothi',
+      url:
+        process.env.DATABASE_URL ||
+        '',
       entities: [
         User,
         Party,
@@ -36,11 +37,17 @@ import { UsersModule } from './users/users.module';
         PurchaseItem,
         Document,
       ],
-      synchronize: process.env.NODE_ENV !== 'production', // Only in development
+      synchronize: false, // Only in development
       logging: process.env.TYPEORM_LOGGING === 'true',
+      ssl: {
+        rejectUnauthorized: false,
+      },
     }),
     AuthModule,
     UsersModule,
+    PartiesModule,
+    ProductsModule,
+    PurchasesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
