@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:3000";
+  (import.meta.env.VITE_API_BASE_URL as string) ||
+  "https://mothi-platform.railway.app";
 
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";

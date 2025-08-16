@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // For development using localhost
-export const API_BASE_URL = "http://localhost:3000";
+export const API_BASE_URL = "https://mothi-platform.railway.app";
 
 // For testing on physical device or other machines in the network
 // export const API_BASE_URL = 'http://YOUR_MACHINE_IP:3000';

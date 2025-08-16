@@ -4,7 +4,9 @@ import { Platform } from "react-native";
 
 // API Configuration - Use localhost for web development
 const API_BASE_URL =
-  Platform.OS === "web" ? "http://localhost:3000" : "http://localhost:3000"; // Change to your backend URL
+  Platform.OS === "web"
+    ? "https://mothi-platform.railway.app"
+    : "https://mothi-platform.railway.app"; // Change to your backend URL
 
 // Token storage keys
 export const ACCESS_TOKEN_KEY = "access_token";

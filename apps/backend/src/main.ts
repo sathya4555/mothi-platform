@@ -19,7 +19,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:8081',
       'http://localhost:8082',
-      'http://localhost:3000',
+      'https://mothi-platform.railway.app',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -27,6 +27,8 @@ async function bootstrap() {
   });
 
   await app.listen(3000);
-  console.log('🚀 Mothi Platform Backend running on http://localhost:3000');
+  console.log(
+    '🚀 Mothi Platform Backend running on https://mothi-platform.railway.app',
+  );
 }
 bootstrap();

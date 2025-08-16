@@ -1,8 +1,8 @@
 ### Test Health Endpoint
-GET http://localhost:3000/health
+GET https://mothi-platform.railway.app/health
 
 ### Test Login (will fail without users)
-POST http://localhost:3000/auth/login
+POST https://mothi-platform.railway.app/auth/login
 Content-Type: application/json
 
 {
@@ -11,7 +11,7 @@ Content-Type: application/json
 }
 
 ### Test Create User (Admin only - will need auth token)
-POST http://localhost:3000/auth/create-user
+POST https://mothi-platform.railway.app/auth/create-user
 Content-Type: application/json
 Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
 
@@ -23,7 +23,7 @@ Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
 }
 
 ### Test Refresh Token
-POST http://localhost:3000/auth/refresh
+POST https://mothi-platform.railway.app/auth/refresh
 Content-Type: application/json
 
 {
@@ -31,5 +31,5 @@ Content-Type: application/json
 }
 
 ### Test Logout (requires auth token)
-POST http://localhost:3000/auth/logout
+POST https://mothi-platform.railway.app/auth/logout
 Authorization: Bearer YOUR_ACCESS_TOKEN_HERE 
