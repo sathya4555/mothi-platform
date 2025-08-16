@@ -14,21 +14,23 @@ async function bootstrap() {
     }),
   );
 
-  // Enable CORS for frontend
+  // Enable CORS for frontend - More permissive for development
   app.enableCors({
-    origin: [
-      'http://localhost:8081',
-      'http://localhost:8082',
-      'https://mothi-platform.railway.app',
-    ],
+    origin: true, // Allow all origins in development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Cache-Control',
+    ],
   });
 
-  await app.listen(3000);
-  console.log(
-    '🚀 Mothi Platform Backend running on https://mothi-platform.railway.app',
-  );
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  console.log(`🚀 Mothi Platform Backend running on port ${port}`);
 }
 bootstrap();
